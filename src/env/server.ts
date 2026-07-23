@@ -2,16 +2,22 @@ import "server-only";
 
 import { z } from "zod";
 
+const operationalEmailSchema = z
+  .string()
+  .trim()
+  .transform((value) => value.match(/<([^<>]+)>$/)?.[1] ?? value)
+  .pipe(z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/));
+
 const serverEnvironmentSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  DATABASE_URL: z.string().regex(/^postgresql:\/\/[^\s]+$/),
+  DATABASE_URL: z.string().trim().refine((value) => value.startsWith("postgresql://")),
   RESEND_API_KEY: z.string().min(1),
-  EMAIL_FROM_ADDRESS: z.email(),
+  EMAIL_FROM_ADDRESS: operationalEmailSchema,
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive(),
   SMTP_USERNAME: z.string().min(1),
   SMTP_PASSWORD: z.string().min(1),
-  FIREBASE_CLIENT_EMAIL: z.email(),
+  FIREBASE_CLIENT_EMAIL: operationalEmailSchema,
   FIREBASE_PRIVATE_KEY: z.string().min(40),
   TURNSTILE_SECRET_KEY: z.string().min(1),
   SENTRY_AUTH_TOKEN: z.string().min(1),

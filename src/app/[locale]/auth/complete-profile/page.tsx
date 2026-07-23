@@ -9,8 +9,8 @@ import { localizedPath } from "@/lib/routing/localized-path";
 
 export const metadata: Metadata = { title: "Complete your profile", robots: { index: false, follow: false } };
 
-export default async function CompleteProfilePage({ params }: { params: Promise<{ locale: AppLocale }> }) {
-  const { locale } = await params;
+export default async function CompleteProfilePage({ params }: { params: Promise<{ locale: string }> }) {
+  const locale = (await params).locale as AppLocale;
   if (!routing.locales.includes(locale)) redirect("/");
   const context = await getAuthenticatedContext();
   if (!context) redirect(localizedPath(locale, "/auth/sign-in"));
