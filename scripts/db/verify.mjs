@@ -37,6 +37,10 @@ const expectedTables = [
   "professional_verifications", "properties", "provinces", "rate_limit_events", "roles", "service_categories",
   "service_subcategories", "service_zones", "support_notes", "system_settings", "user_consents", "user_profiles",
   "user_roles", "verification_types",
+  "accepted_offer_snapshots", "arrival_verifications", "booking_reschedule_requests", "bookings",
+  "domain_outbox", "idempotency_keys", "job_status_history", "jobs", "matching_runs",
+  "professional_offer_items", "professional_offers", "request_matching_candidates",
+  "service_request_media", "service_request_status_history", "service_requests",
 ];
 
 try {
@@ -57,11 +61,11 @@ try {
       (select count(*)::int from public.service_categories) as categories,
       (select count(*)::int from public.service_subcategories) as subcategories,
       (select count(*)::int from public.cities) as cities,
-      (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies')) as buckets,
+      (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies','service-request-media')) as buckets,
       (select count(*)::int from pg_policies where schemaname = 'public') as policies
   `;
 
-  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 3 || counts.policies < 20) {
+  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 4 || counts.policies < 40) {
     throw new Error("Seed or policy verification failed.");
   }
 
