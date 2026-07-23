@@ -1,0 +1,2 @@
+import { apiError, apiSuccess } from "@/lib/api/response"; import { createAdminClient } from "@/lib/supabase/admin";
+export async function GET(){const {data,error}=await createAdminClient().from("verification_types").select("id,code,name,description,is_required").eq("is_active",true).order("is_required",{ascending:false});if(error)return apiError(500,"VERIFICATION_TYPES_LOAD_FAILED","Document requirements could not be loaded.");return apiSuccess({verificationTypes:data});}

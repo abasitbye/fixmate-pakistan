@@ -1,0 +1,2 @@
+import { PersonalStep } from "@/components/professional/personal-step"; import { ProfessionalStepShell } from "@/components/professional/step-shell";
+export default function Page(){return <ProfessionalStepShell step="personal" kicker="Steps 1–2" title="Personal and professional information" lead="Tell the review team who you are, what experience you have, and how you work."><PersonalStep/></ProfessionalStepShell>}

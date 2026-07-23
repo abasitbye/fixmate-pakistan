@@ -1,0 +1,2 @@
+import { CheckCircle2, LoaderCircle } from "lucide-react";
+export function SaveButton({pending,label="Save and continue",onClick,type="submit"}:{pending:boolean;label?:string;onClick?:()=>void;type?:"button"|"submit"}){return <button type={type} onClick={onClick} className="button button--primary button--large" disabled={pending}>{pending?<LoaderCircle className="spin" size={18}/>:<CheckCircle2 size={18}/>} {pending?"Saving securely…":label}</button>}
