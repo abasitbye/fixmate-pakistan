@@ -1,0 +1,2 @@
+import {NotebookPen} from "lucide-react";
+export default function Page(){return <><div className="dashboard-heading"><div><span className="section-kicker">Support history</span><h1>Internal notes</h1><p>Notes are created through an authenticated API and recorded in the audit trail.</p></div></div><div className="panel-card empty-state"><span className="panel-icon"><NotebookPen size={24}/></span><h2>Select a user first</h2><p>Support notes are always attached to a specific account and are never visible to the public.</p></div></>}

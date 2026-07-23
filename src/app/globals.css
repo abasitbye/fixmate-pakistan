@@ -418,3 +418,24 @@ img { max-width: 100%; height: auto; }
   .upload-button,.icon-button { grid-column:auto; justify-self:end; }
 }
 @media (min-width:920px) { .review-layout { grid-template-columns:1fr 1fr; align-items:start; } }
+
+/* Administration and support */
+.admin-table { overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius-md); background:white; }
+.admin-table__head,.admin-table__row { min-width:720px; display:grid; grid-template-columns:1.5fr .8fr 1fr .8fr; align-items:center; gap:1rem; padding:.8rem 1rem; }
+.admin-table__head { color:var(--ink-500); background:var(--surface-muted); font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; }
+.admin-table__row { min-height:68px; border-top:1px solid var(--line); color:var(--ink-700); font-size:.78rem; }
+.admin-table__row > span:first-child { display:grid; gap:.15rem; }
+.admin-table__row small,.review-item small { display:block; color:var(--ink-500); font-size:.67rem; }
+.admin-table__row a { width:36px; height:36px; display:grid; place-items:center; justify-self:end; border:1px solid var(--line); border-radius:.55rem; color:var(--blue-700); }
+.decision-panel { display:grid; gap:.75rem; }
+.decision-panel label { display:grid; gap:.4rem; color:var(--ink-700); font-size:.76rem; font-weight:750; }
+.decision-panel .button { justify-self:start; }
+.detail-list { display:grid; gap:.6rem; margin:1rem 0 0; }
+.detail-list div { display:flex; justify-content:space-between; gap:1rem; padding:.55rem 0; border-bottom:1px solid var(--line); }
+.detail-list dt { color:var(--ink-500); font-size:.75rem; }
+.detail-list dd { margin:0; color:var(--navy-950); font-size:.78rem; font-weight:750; }
+.admin-section { margin-top:1rem; }
+.review-item { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:.75rem; padding:.75rem 0; border-top:1px solid var(--line); }
+.review-item > div:first-child { min-width:0; }
+.inline-actions { display:flex; align-items:center; gap:.4rem; }
+.inline-actions button { min-height:32px; padding:.35rem .55rem; border:1px solid var(--line); border-radius:.5rem; color:var(--ink-700); background:white; font-size:.68rem; font-weight:750; cursor:pointer; }
