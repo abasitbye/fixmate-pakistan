@@ -4,7 +4,7 @@ import { z } from "zod";
 
 const serverEnvironmentSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
-  DATABASE_URL: z.string().startsWith("postgresql://"),
+  DATABASE_URL: z.string().regex(/^postgresql:\/\/[^\s]+$/),
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM_ADDRESS: z.email(),
   SMTP_HOST: z.string().min(1),
@@ -62,4 +62,3 @@ export function getEnvironmentReadiness() {
     required.map((name) => [name, Boolean(process.env[name])]),
   );
 }
-
