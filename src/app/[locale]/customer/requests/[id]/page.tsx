@@ -30,7 +30,10 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
     </div>
     <div className="dashboard-grid">
       <RequestMedia requestId={request.id} status={request.status} media={(request.service_request_media ?? []) as unknown as Parameters<typeof RequestMedia>[0]["media"]} />
-      <RequestActions requestId={request.id} version={request.version} status={request.status} />
+      <div>
+        <RequestActions requestId={request.id} version={request.version} status={request.status} />
+        {request.status === "offers_received" ? <Link className="button button--primary button--large" href={`/customer/requests/${request.id}/offers`}>Compare professional offers</Link> : null}
+      </div>
     </div>
   </>;
 }

@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:integration:phase2": "node scripts/test/phase2-request-integration.mjs",
+    "test:integration:marketplace": "node scripts/test/phase2-marketplace-integration.mjs",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:migrate": "node scripts/db/migrate.mjs",
     "db:status": "node scripts/db/migrate.mjs --status",

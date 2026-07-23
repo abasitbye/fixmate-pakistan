@@ -55,6 +55,21 @@ Draft creation, submission, and cancellation use database transactions. They enf
 
 The customer pages are implemented but redirect to the existing dashboard while the request and marketplace flags remain disabled. This prevents a request from entering an unavailable matching workflow before Checkpoint 3 is ready.
 
+## Matching and offers
+
+Checkpoint 3 adds:
+
+- deterministic hard eligibility for account, approval, role, required verifications, service, area, availability, and schedule conflicts
+- controlled invitation batches with expiry and an auditable strategy version
+- workload fairness so new or lightly loaded approved professionals are not permanently disadvantaged
+- privacy-safe invitation projections that omit exact address, coordinates, contact data, competing offers, and internal scores
+- professional invitation view/decline and offer draft/submit/withdraw APIs
+- customer offer comparison using scope, schedule, professional context, price type, inspection fee, and warranty
+- atomic offer acceptance with optimistic concurrency and idempotent replay
+- immutable accepted-commercial-terms snapshots and controlled booking creation
+
+The integration suite creates isolated customer and approved-professional records, verifies matching through booking creation, confirms acceptance replay does not duplicate a booking, confirms the exact address remains unreleased, and removes every test record.
+
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
 
 ## Mobile readiness

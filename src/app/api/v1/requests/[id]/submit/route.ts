@@ -3,6 +3,7 @@ import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getAuthenticatedContext } from "@/lib/auth/session";
 import { isMarketplaceFeatureEnabled } from "@/lib/marketplace/feature-flags";
 import { parseIdempotencyKey } from "@/lib/marketplace/idempotency";
+import { runRequestMatching } from "@/lib/marketplace/matching/service";
 import { requestCommandError } from "@/lib/marketplace/requests/api";
 import { requestSubmitSchema } from "@/lib/marketplace/requests/schemas";
 import { submitCustomerRequest } from "@/lib/marketplace/requests/service";
@@ -40,5 +41,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     key,
   );
   if (error || !data) return requestCommandError(error);
+  if (await isMarketplaceFeatureEnabled("phase2.matching_enabled")) {
+    await runRequestMatching(data.id, context.profile.id).catch(() => null);
+  }
   return apiSuccess({ request: data });
 }

@@ -66,16 +66,21 @@ try {
       (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
         'create_service_request_draft','update_service_request_draft','submit_service_request','cancel_service_request'
       )) as request_commands,
+      (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
+        'run_request_matching','save_professional_offer','submit_professional_offer',
+        'withdraw_professional_offer','accept_professional_offer'
+      )) as matching_commands,
       (select count(*)::int from pg_policies where schemaname = 'public') as policies
   `;
 
-  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 4 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.policies < 40) {
+  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 4 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.policies < 40) {
     throw new Error("Seed or policy verification failed.");
   }
 
   console.log(`verified tables=${tables.length} rls=${tables.length} policies=${counts.policies}`);
   console.log(`verified roles=${counts.roles} categories=${counts.categories} subcategories=${counts.subcategories} cities=${counts.cities} private_buckets=${counts.buckets}`);
   console.log(`verified phase2_flags_disabled=${counts.disabled_phase2_flags} request_commands=${counts.request_commands}`);
+  console.log(`verified matching_offer_commands=${counts.matching_commands}`);
 } finally {
   await sql.end({ timeout: 5 });
 }
