@@ -14,7 +14,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+    "db:migrate": "node scripts/db/migrate.mjs",
+    "db:status": "node scripts/db/migrate.mjs --status",
+    "db:verify": "node scripts/db/verify.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -34,6 +37,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@next/env": "16.2.11",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
@@ -44,6 +48,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "jsdom": "^29.1.1",
+    "postgres": "^3.4.9",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.10"
