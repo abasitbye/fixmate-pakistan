@@ -6,7 +6,7 @@ const {loadEnvConfig}=nextEnvironment;loadEnvConfig(process.cwd());
 const emailArgument=process.argv.find(value=>value.startsWith("--email="))?.slice(8)?.trim().toLowerCase();
 const confirmation=process.argv.find(value=>value.startsWith("--confirm="))?.slice(10);
 if(!emailArgument||confirmation!=="GRANT_SUPER_ADMIN")throw new Error("Usage: pnpm admin:grant-super -- --email=user@example.com --confirm=GRANT_SUPER_ADMIN");
-const url=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error("Supabase server environment is required.");
+const configuredUrl=process.env.NEXT_PUBLIC_SUPABASE_URL;const key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!configuredUrl||!key)throw new Error("Supabase server environment is required.");const url=new URL(configuredUrl).origin;
 const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});let targetUser;
 for(let page=1;page<=20&&!targetUser;page++){const {data,error}=await admin.auth.admin.listUsers({page,perPage:100});if(error)throw error;targetUser=data.users.find(user=>user.email?.toLowerCase()===emailArgument);if(data.users.length<100)break;}
 if(!targetUser)throw new Error("The user must complete email OTP sign-in before elevated access can be granted.");

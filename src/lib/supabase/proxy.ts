@@ -6,11 +6,12 @@ export async function updateSession(
   initialResponse: NextResponse = NextResponse.next({ request }),
 ) {
   const response = initialResponse;
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const configuredUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!url || !key) return response;
+  if (!configuredUrl || !key) return response;
 
+  const url = new URL(configuredUrl).origin;
   const supabase = createServerClient(url, key, {
     cookies: {
       getAll: () => request.cookies.getAll(),

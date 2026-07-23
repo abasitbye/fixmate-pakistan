@@ -4,7 +4,9 @@ const clientEnvironmentSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.url().refine((value) => value.startsWith("https://"), {
     message: "NEXT_PUBLIC_APP_URL must use HTTPS.",
   }),
-  NEXT_PUBLIC_SUPABASE_URL: z.url(),
+  NEXT_PUBLIC_SUPABASE_URL: z
+    .url()
+    .transform((value) => new URL(value).origin),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(20),
   NEXT_PUBLIC_FIREBASE_API_KEY: z.string().min(1),
   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: z.string().min(1),
@@ -59,4 +61,3 @@ export function getClientEnvironment(): ClientEnvironment {
   cachedEnvironment = result.data;
   return cachedEnvironment;
 }
-
