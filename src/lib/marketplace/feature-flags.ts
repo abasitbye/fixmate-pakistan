@@ -8,6 +8,7 @@ export const marketplaceFlagKeys = [
   "phase2.matching_enabled",
   "phase2.jobs_enabled",
   "phase2.payments_enabled",
+  "phase2.resolution_enabled",
 ] as const;
 
 export type MarketplaceFlag = (typeof marketplaceFlagKeys)[number];

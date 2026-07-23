@@ -18,6 +18,10 @@ JSON routes return `{ success: true, data, error: null }` or `{ success: false, 
 - `/api/v1/professional/earnings` and `/professional/payouts`: professional-owned earnings and settlement history.
 - `/api/v1/admin/fees`, `/payouts`, `/refunds`, and `/reconciliation`: fee configuration, maker-checker payouts, refund accounting, and documented reconciliation.
 - `/api/v1/webhooks/payments/:provider`: signature-gated, adapter-backed, idempotent provider ingress; unavailable while no verified online adapter exists.
+- `/api/v1/jobs/:id/reviews` and `/api/v1/reviews/:id`: eligible mutual reviews and staff moderation without wording edits.
+- `/api/v1/warranties*` and `/api/v1/warranty-claims*`: accepted-term warranty history, claims, private evidence, response, revisit, resolution, and escalation.
+- `/api/v1/jobs/:id/disputes` and `/api/v1/disputes*`: idempotent case opening, visibility-controlled evidence/messages, details, and closure.
+- `/api/v1/admin/reviews` and `/api/v1/admin/disputes*`: moderation, assignment/evidence requests, proposals, audited decisions, and reopening.
 - `/api/v1/professional/application*`: drafts, services, areas, availability, signed documents, references, payout readiness, submission.
 - `/api/v1/notifications*` and `/api/v1/notification-devices`: in-app state and Firebase devices.
 - `/api/v1/public/*`: catalog, locations, verification requirements.

@@ -64,6 +64,33 @@ async function cleanup() {
       await admin.from("payment_transactions").delete().in("payment_intent_id", paymentIntentIds);
       await admin.from("payment_intents").delete().in("id", paymentIntentIds);
     }
+    const [{ data: disputeRows }, { data: claimRows }, { data: warrantyRows }, { data: reviewRows }] = await Promise.all([
+      admin.from("job_disputes").select("id").eq("job_id", jobId),
+      admin.from("warranty_claims").select("id").eq("job_id", jobId),
+      admin.from("job_warranties").select("id").eq("job_id", jobId),
+      admin.from("job_reviews").select("id").eq("job_id", jobId),
+    ]);
+    const disputeIds = disputeRows?.map((item) => item.id) ?? [];
+    const claimIds = claimRows?.map((item) => item.id) ?? [];
+    const warrantyIds = warrantyRows?.map((item) => item.id) ?? [];
+    const reviewIds = reviewRows?.map((item) => item.id) ?? [];
+    const resolutionEntityIds = [...disputeIds, ...claimIds, ...warrantyIds, ...reviewIds];
+    if (resolutionEntityIds.length) {
+      await admin.from("audit_logs").delete().in("entity_id", resolutionEntityIds);
+      await admin.from("domain_outbox").delete().in("aggregate_id", resolutionEntityIds);
+    }
+    if (disputeIds.length) {
+      await admin.from("marketplace_account_actions").delete().in("dispute_id", disputeIds);
+      await admin.from("dispute_decisions").delete().in("dispute_id", disputeIds);
+      await admin.from("dispute_messages").delete().in("dispute_id", disputeIds);
+      await admin.from("dispute_evidence").delete().in("dispute_id", disputeIds);
+      await admin.from("dispute_status_history").delete().in("dispute_id", disputeIds);
+      await admin.from("job_disputes").delete().in("id", disputeIds);
+    }
+    if (claimIds.length) await admin.from("warranty_claim_evidence").delete().in("claim_id", claimIds);
+    await admin.from("warranty_claims").delete().eq("job_id", jobId);
+    await admin.from("job_warranties").delete().eq("job_id", jobId);
+    await admin.from("job_reviews").delete().eq("job_id", jobId);
     const [{ data: quotations }, { data: messages }] = await Promise.all([
       admin.from("job_quotations").select("id").eq("job_id", jobId),
       admin.from("job_messages").select("id").eq("job_id", jobId),
@@ -111,6 +138,7 @@ async function cleanup() {
     await admin.from("audit_logs").delete().eq("actor_user_profile_id", profileId);
   }
   if (ids.webhookEvents.length) await admin.from("payment_webhook_events").delete().in("id", ids.webhookEvents);
+  await admin.from("professional_rating_aggregates").delete().in("professional_id", ids.profiles.length ? ids.profiles : [randomUUID()]);
   await admin.from("ledger_accounts").delete().in("owner_profile_id", ids.profiles.length ? ids.profiles : [randomUUID()]);
   for (const propertyId of ids.properties) await admin.from("properties").delete().eq("id", propertyId);
   for (const authUserId of ids.authUsers) {
@@ -729,6 +757,135 @@ try {
   assert.equal(earning?.net_amount_minor, 78_000);
   assert.match(receipt?.wording ?? "", /not a tax invoice/i);
 
+  const { data: warranty, error: warrantyError } = await admin.from("job_warranties")
+    .select("*").eq("job_id", job.id).single();
+  if (warrantyError || !warranty) throw warrantyError ?? new Error("Warranty issuance failed.");
+  assert.equal(warranty.status, "active");
+  const { data: claim, error: claimError } = await admin.rpc("create_warranty_claim", {
+    p_actor_profile_id: customerId,
+    p_warranty_id: warranty.id,
+    p_description: "The integration warranty claim verifies the documented response and revisit workflow.",
+  });
+  if (claimError || !claim) throw claimError ?? new Error("Warranty claim failed.");
+  const { data: respondedClaim, error: claimResponseError } = await admin.rpc("respond_warranty_claim", {
+    p_actor_profile_id: professionalId,
+    p_claim_id: claim.id,
+    p_response: "I reviewed the issue and will complete a warranty revisit.",
+  });
+  if (claimResponseError || !respondedClaim) throw claimResponseError ?? new Error("Warranty response failed.");
+  const { data: scheduledClaim, error: claimScheduleError } = await admin.rpc("schedule_warranty_revisit", {
+    p_actor_profile_id: professionalId,
+    p_actor_role: "professional",
+    p_claim_id: claim.id,
+    p_scheduled_at: new Date(Date.now() + 86_400_000).toISOString(),
+  });
+  if (claimScheduleError || !scheduledClaim) throw claimScheduleError ?? new Error("Warranty revisit failed.");
+  const { data: resolvedClaim, error: claimResolveError } = await admin.rpc("resolve_warranty_claim", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "customer",
+    p_claim_id: claim.id,
+    p_resolution: "The warranty revisit corrected the reported issue.",
+    p_resolved: true,
+  });
+  if (claimResolveError || !resolvedClaim) throw claimResolveError ?? new Error("Warranty resolution failed.");
+  assert.equal(resolvedClaim.status, "resolved");
+
+  const { data: customerReview, error: customerReviewError } = await admin.rpc("submit_job_review", {
+    p_actor_profile_id: customerId, p_job_id: job.id, p_actor_role: "customer",
+    p_payload: { rating_overall: 5, rating_quality: 5, rating_timeliness: 4, rating_communication: 5, rating_value: 5, comment: "Professional integration review." },
+  });
+  if (customerReviewError || !customerReview) throw customerReviewError ?? new Error("Customer review failed.");
+  const { data: professionalReview, error: professionalReviewError } = await admin.rpc("submit_job_review", {
+    p_actor_profile_id: professionalId, p_job_id: job.id, p_actor_role: "professional",
+    p_payload: { rating_overall: 5, rating_quality: 5, rating_timeliness: 5, rating_communication: 5, rating_value: 5, comment: "Customer integration review." },
+  });
+  if (professionalReviewError || !professionalReview) throw professionalReviewError ?? new Error("Professional review failed.");
+  const { data: publishedReview, error: moderationError } = await admin.rpc("moderate_job_review", {
+    p_actor_profile_id: professionalId, p_actor_role: "support", p_review_id: customerReview.id,
+    p_status: "published", p_reason: "Integration moderation passed.",
+  });
+  if (moderationError || !publishedReview) throw moderationError ?? new Error("Review moderation failed.");
+  const { data: aggregate } = await admin.from("professional_rating_aggregates").select("*").eq("professional_id", professionalId).single();
+  assert.equal(aggregate?.published_review_count, 1);
+  assert.equal(Number(aggregate?.rating_overall), 5);
+
+  const disputeKey = `integration-dispute:${randomUUID()}`;
+  const disputeInput = {
+    jobId: job.id, reasonCategory: "payment_disagreement",
+    description: "Integration dispute verifies holds, messages, evidence, resolution, closure, and reopening.",
+    requestedResolution: "Review the recorded payment and release the correct professional amount.",
+    contactPreference: "in_app",
+  };
+  const disputeArgs = {
+    p_actor_profile_id: customerId, p_job_id: job.id, p_reason_category: disputeInput.reasonCategory,
+    p_description: disputeInput.description, p_requested_resolution: disputeInput.requestedResolution,
+    p_contact_preference: disputeInput.contactPreference, p_idempotency_key: disputeKey,
+    p_request_hash: hash(disputeInput),
+  };
+  const { data: dispute, error: disputeError } = await admin.rpc("open_job_dispute", disputeArgs);
+  if (disputeError || !dispute) throw disputeError ?? new Error("Dispute opening failed.");
+  assert.equal(dispute.payment_hold_amount_minor, 78_000);
+  const { data: disputeReplay, error: disputeReplayError } = await admin.rpc("open_job_dispute", disputeArgs);
+  if (disputeReplayError || !disputeReplay) throw disputeReplayError ?? new Error("Dispute replay failed.");
+  assert.equal(disputeReplay.id, dispute.id);
+  const blockedPayoutKey = `integration-held-payout:${randomUUID()}`;
+  const { error: heldPayoutError } = await admin.rpc("create_professional_payout", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "admin",
+    p_professional_id: professionalId,
+    p_earning_ids: [earning.id],
+    p_idempotency_key: blockedPayoutKey,
+    p_request_hash: hash({ professionalId, earningIds: [earning.id] }),
+  });
+  assert.match(heldPayoutError?.message ?? "", /PAYOUT_EARNINGS_NOT_AVAILABLE/);
+  const { data: disputeMessage, error: disputeMessageError } = await admin.rpc("send_dispute_message", {
+    p_actor_profile_id: professionalId, p_actor_role: "professional", p_dispute_id: dispute.id,
+    p_body: "The professional statement is preserved in the shared dispute timeline.", p_visibility: "shared",
+  });
+  if (disputeMessageError || !disputeMessage) throw disputeMessageError ?? new Error("Dispute message failed.");
+  const { data: evidenceId, error: evidenceError2 } = await admin.rpc("add_resolution_evidence", {
+    p_actor_profile_id: customerId, p_actor_role: "customer", p_case_type: "dispute", p_case_id: dispute.id,
+    p_evidence_type: "document", p_storage_path: `disputes/${dispute.id}/integration.pdf`,
+    p_mime_type: "application/pdf", p_file_size: 1024, p_description: "Integration dispute evidence.",
+    p_visibility: "shared",
+  });
+  if (evidenceError2 || !evidenceId) throw evidenceError2 ?? new Error("Dispute evidence failed.");
+  const { data: reviewedDispute, error: workflowError } = await admin.rpc("update_dispute_workflow", {
+    p_actor_profile_id: professionalId, p_actor_role: "support", p_dispute_id: dispute.id,
+    p_action: "propose", p_value: "Review found the payment record accurate and recommends releasing the held earning.",
+  });
+  if (workflowError || !reviewedDispute) throw workflowError ?? new Error("Dispute workflow failed.");
+  const { data: resolvedDispute, error: disputeResolveError } = await admin.rpc("resolve_job_dispute", {
+    p_actor_profile_id: customerId, p_actor_role: "admin", p_dispute_id: dispute.id,
+    p_decision_type: "no_action", p_customer_refund_minor: 0, p_professional_release_minor: 78_000,
+    p_platform_fee_adjustment_minor: 0, p_account_target_id: null,
+    p_reason: "The evidence confirms the payment and approved work; release the held earning.",
+  });
+  if (disputeResolveError || !resolvedDispute) throw disputeResolveError ?? new Error("Dispute resolution failed.");
+  assert.equal(resolvedDispute.status, "resolved");
+  const { error: unauthorizedCloseError } = await admin.rpc("transition_resolved_dispute", {
+    p_actor_profile_id: randomUUID(), p_actor_role: "customer", p_dispute_id: dispute.id,
+    p_action: "close", p_reason: "An unrelated account must not be able to close this dispute.",
+  });
+  assert.match(unauthorizedCloseError?.message ?? "", /DISPUTE_CLOSE_FORBIDDEN/);
+  const { data: closedDispute, error: closeError } = await admin.rpc("transition_resolved_dispute", {
+    p_actor_profile_id: customerId, p_actor_role: "customer", p_dispute_id: dispute.id,
+    p_action: "close", p_reason: "The documented resolution is acknowledged.",
+  });
+  if (closeError || !closedDispute) throw closeError ?? new Error("Dispute closure failed.");
+  const { data: reopenedDispute, error: reopenError } = await admin.rpc("transition_resolved_dispute", {
+    p_actor_profile_id: professionalId, p_actor_role: "support", p_dispute_id: dispute.id,
+    p_action: "reopen", p_reason: "Integration appeal check reopens the resolved case for authorized review.",
+  });
+  if (reopenError || !reopenedDispute) throw reopenError ?? new Error("Dispute reopening failed.");
+  const { data: reresolvedDispute, error: reresolveError } = await admin.rpc("resolve_job_dispute", {
+    p_actor_profile_id: customerId, p_actor_role: "admin", p_dispute_id: dispute.id,
+    p_decision_type: "no_action", p_customer_refund_minor: 0, p_professional_release_minor: 0,
+    p_platform_fee_adjustment_minor: 0, p_account_target_id: null,
+    p_reason: "Authorized appeal review confirms the original evidence-based resolution.",
+  });
+  if (reresolveError || !reresolvedDispute) throw reresolveError ?? new Error("Reopened dispute resolution failed.");
+
   const payoutKey = `integration-payout:${randomUUID()}`;
   const payoutArgs = {
     p_actor_profile_id: customerId,
@@ -812,7 +969,7 @@ try {
   assert.equal(snapshotCount, 1);
   assert.equal(bookingCount, 1);
   assert.equal(candidateCount, 1);
-  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 en_route=1 arrival=verified inspection=1 quotation_versions=2 quotation_approved=1 work_started=1 chat_read=1 change_order_approved=1 completion_issue=1 completion_confirmed=1 payment_confirmed=1 reconciliation=1 ledger_balanced=1 payout_paid=1 maker_checker=1 refund_completed=1 webhook_idempotent=1 safety_guards=2");
+  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 en_route=1 arrival=verified inspection=1 quotation_versions=2 quotation_approved=1 work_started=1 chat_read=1 change_order_approved=1 completion_issue=1 completion_confirmed=1 payment_confirmed=1 reconciliation=1 ledger_balanced=1 warranty_issued=1 claim_resolved=1 mutual_reviews=1 moderation=1 rating_aggregate=1 dispute_hold=1 held_payout_blocked=1 dispute_resolved=1 unauthorized_close_blocked=1 dispute_reopened=1 payout_paid=1 maker_checker=1 refund_completed=1 webhook_idempotent=1 safety_guards=2");
 } finally {
   await cleanup();
 }

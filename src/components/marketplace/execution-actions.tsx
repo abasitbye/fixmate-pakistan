@@ -55,6 +55,8 @@ export function ExecutionActions({ jobId, role, status, version }: { jobId: stri
         <button className="button button--ghost" onClick={() => completionDecision("report-issue")} disabled={Boolean(pending)}>Report incomplete work or damage</button>
       </> : null}
       {status === "completed" ? <Link className="button button--primary" href={`/${role}/jobs/${jobId}/payment`}><Banknote size={17} /> Payment</Link> : null}
+      {status === "completed" ? <Link className="button button--ghost" href={`/${role}/jobs/${jobId}/review`}>Review</Link> : null}
+      {role === "customer" && ["completed", "warranty_active", "disputed"].includes(status) ? <><Link className="button button--ghost" href={`/customer/jobs/${jobId}/warranty`}>Warranty</Link><Link className="button button--ghost" href={`/customer/jobs/${jobId}/dispute`}>Dispute</Link></> : null}
     </div>
     {pending ? <p><LoaderCircle className="spin" size={16} /> Saving the job update…</p> : null}
     {error ? <div className="form-alert form-alert--error" role="alert">{error}</div> : null}

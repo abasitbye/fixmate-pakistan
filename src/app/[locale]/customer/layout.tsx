@@ -18,6 +18,7 @@ export default async function CustomerLayout({ children, params }: { children: R
       matching: marketplace && flags["phase2.matching_enabled"],
       jobs: marketplace && flags["phase2.jobs_enabled"],
       payments: marketplace && flags["phase2.payments_enabled"],
+      resolution: marketplace && flags["phase2.resolution_enabled"],
     }}
   >{children}</DashboardShell>;
 }

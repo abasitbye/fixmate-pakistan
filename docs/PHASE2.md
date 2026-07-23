@@ -118,6 +118,22 @@ Checkpoint 6 adds:
 
 The integration path now continues after completion through idempotent payment creation, a reported disagreement, staff reconciliation, customer confirmation, balanced journal verification, available earnings, maker-checker payout and evidence, partial refund accounting, webhook replay, and verified cleanup. Live online collection or payout is intentionally not claimed: no provider is enabled until credentials, signature verification, sandbox tests, account/legal approval, and authorized production tests exist.
 
+## Reviews, warranties, and disputes
+
+Checkpoint 7 adds:
+
+- one mutual review per eligible participant after completed, non-cancelled work
+- preserved review wording, staff moderation states/reasons, and controlled published professional aggregates without seeded ratings
+- automatic warranty issuance from the approved quotation’s coverage, exclusions, start, expiry, and warranty days
+- customer claims, private evidence, professional response deadlines, revisits, customer/staff resolution, and atomic escalation to a dispute
+- participant disputes across operational, payment, safety, conduct, damage, and warranty categories
+- private immutable evidence plus shared/party-specific/internal message visibility that RLS enforces
+- payment holds using correction journal entries, an explicit guard against paying held earnings, and release through audited decisions
+- admin workflow, refund decisions, professional releases, fee adjustments, warnings/suspensions/restrictions, notifications, closure, and authorized reopening
+- customer, professional, support, and administrator screens backed by the same mobile-ready APIs
+
+The integration lifecycle verifies warranty issuance, claim response/revisit/resolution, mutual review submission, moderation and aggregate recalculation, a balanced dispute hold/release, evidence, messaging, resolution, closure, reopening, and safe continuation into payout and refund accounting.
+
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
 
 ## Mobile readiness

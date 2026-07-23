@@ -77,7 +77,7 @@ export function DashboardShell({
   displayName: string | null;
   roles: string[];
   section?: "customer" | "professional" | "admin" | "support";
-  marketplaceNavigation?: { requests: boolean; matching: boolean; jobs: boolean; payments: boolean };
+  marketplaceNavigation?: { requests: boolean; matching: boolean; jobs: boolean; payments: boolean; resolution: boolean };
 }) {
   let navigationLinks = [...sectionLinks[section]] as Array<{ href: string; label: string; icon: typeof LayoutDashboard }>;
   if (section === "customer") {
@@ -108,6 +108,10 @@ export function DashboardShell({
         { href: "/professional/earnings", label: "Earnings", icon: BadgeDollarSign },
         { href: "/professional/payouts", label: "Payouts", icon: ScrollText },
       ] : []),
+      ...(marketplaceNavigation?.resolution ? [
+        { href: "/professional/warranties", label: "Warranties", icon: ShieldCheck },
+        { href: "/professional/disputes", label: "Disputes", icon: Headphones },
+      ] : []),
     ];
     navigationLinks = [navigationLinks[0], ...marketplaceLinks, ...navigationLinks.slice(1)];
   }
@@ -121,6 +125,9 @@ export function DashboardShell({
   if (section === "support" && marketplaceNavigation?.payments) {
     navigationLinks.splice(2, 0, { href: "/support/payments", label: "Payments", icon: BadgeDollarSign });
   }
+  if (section === "support" && marketplaceNavigation?.resolution) {
+    navigationLinks.splice(3, 0, { href: "/support/warranties", label: "Warranties", icon: ShieldCheck }, { href: "/support/disputes", label: "Disputes", icon: Headphones });
+  }
   if (section === "admin" && marketplaceNavigation?.payments) {
     navigationLinks = [
       navigationLinks[0],
@@ -131,6 +138,13 @@ export function DashboardShell({
       { href: "/admin/payouts", label: "Payouts", icon: ScrollText },
       ...navigationLinks.slice(1),
     ];
+  }
+  if (section === "admin" && marketplaceNavigation?.resolution) {
+    navigationLinks.splice(1, 0,
+      { href: "/admin/reviews", label: "Reviews", icon: BadgeDollarSign },
+      { href: "/admin/warranties", label: "Warranties", icon: ShieldCheck },
+      { href: "/admin/disputes", label: "Disputes", icon: Headphones },
+    );
   }
   const mobileLinks = navigationLinks.slice(0, 4);
 
