@@ -10,6 +10,10 @@ JSON routes return `{ success: true, data, error: null }` or `{ success: false, 
 - `/api/v1/requests/:id/offers*`: customer offer comparison and atomic selection.
 - `/api/v1/bookings*`: participant booking lists/details, professional confirmation, schedule proposals/responses, effective-policy cancellation preview/action, and staff-reviewed no-show outcomes.
 - `/api/v1/jobs*`: participant job lists/details, professional en-route transition, customer-only arrival-code generation, professional-only verification, and consent-limited location start/point/stop commands.
+- `/api/v1/jobs/:id/inspection*`, `/work/*`, and `/completion*`: controlled inspection, approved-work progress, pause/resume, evidence-gated completion, and customer completion decisions.
+- `/api/v1/jobs/:id/quotations*` and `/api/v1/quotations*`: itemized immutable quotation versions and explicit customer decisions.
+- `/api/v1/jobs/:id/change-orders*` and `/api/v1/change-orders*`: changed-scope proposals and customer approval before non-emergency covered work continues.
+- `/api/v1/jobs/:id/messages*` and `/media*`: rate-limited job chat/read state and private signed evidence uploads.
 - `/api/v1/professional/application*`: drafts, services, areas, availability, signed documents, references, payout readiness, submission.
 - `/api/v1/notifications*` and `/api/v1/notification-devices`: in-app state and Firebase devices.
 - `/api/v1/public/*`: catalog, locations, verification requirements.

@@ -4,7 +4,7 @@ import type { AwaitedAuthenticatedContext } from "@/lib/professional/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const jobSelection =
-  "id,job_reference,booking_id,request_id,customer_id,professional_id,property_id,service_category_id,service_subcategory_id,status,work_status,payment_status,warranty_status,dispute_status,scheduled_start_at,actual_en_route_at,actual_arrived_at,version,created_at,bookings(booking_reference,scheduled_end_at,exact_address_released_at),service_requests(request_reference,title,description),service_categories(name_en),service_subcategories(name_en),professional_profiles!jobs_professional_id_fkey(business_name,user_profiles(display_name)),customer_profiles!jobs_customer_id_fkey(user_profiles(display_name))";
+  "id,job_reference,booking_id,request_id,customer_id,professional_id,property_id,service_category_id,service_subcategory_id,status,work_status,payment_status,warranty_status,dispute_status,scheduled_start_at,actual_en_route_at,actual_arrived_at,pause_reason,paused_at,completion_issue_status,version,created_at,bookings(booking_reference,scheduled_end_at,exact_address_released_at),service_requests(request_reference,title,description),service_categories(name_en),service_subcategories(name_en),professional_profiles!jobs_professional_id_fkey(business_name,user_profiles(display_name)),customer_profiles!jobs_customer_id_fkey(user_profiles(display_name))";
 
 export function jobParticipantRole(
   context: AwaitedAuthenticatedContext,

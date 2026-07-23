@@ -3,6 +3,8 @@ import { CalendarClock, History, MapPin, ShieldCheck, Wrench } from "lucide-reac
 import { Link } from "@/i18n/navigation";
 
 import { JobActions } from "./job-actions";
+import { ExecutionActions } from "./execution-actions";
+import { JobEvidence } from "./job-evidence";
 
 type Relation<T> = T | T[] | null;
 type LocationSession = {
@@ -30,6 +32,7 @@ type Job = {
   actual_en_route_at: string | null;
   actual_arrived_at: string | null;
   version: number;
+  pause_reason?: string | null;
   service_requests: Relation<{ request_reference: string; title: string; description: string }>;
   service_subcategories: Relation<{ name_en: string }>;
   job_status_history: Array<{ id: number; to_status: string; actor_role: string | null; created_at: string }>;
@@ -45,6 +48,7 @@ export function JobDetail({
   role,
   exactAddress,
   arrivalVerification,
+  media = [],
 }: {
   job: Job;
   role: "customer" | "professional";
@@ -56,6 +60,7 @@ export function JobDetail({
     max_attempts: number;
     verified_at: string | null;
   } | null;
+  media?: Array<{ id: string; media_stage: string; media_type: string; mime_type: string; file_size: number; caption: string | null }>;
 }) {
   const request = one(job.service_requests);
   const service = one(job.service_subcategories);
@@ -89,6 +94,8 @@ export function JobDetail({
           </> : <p>The professional is not actively sharing location. Sharing is optional and limited to the en-route job window.</p>}
         </section> : null}
         {role === "customer" && arrivalVerification ? <section className="panel-card"><h2>Arrival verification security</h2><p>Status: <strong>{arrivalVerification.status}</strong></p><p>Attempts used: {arrivalVerification.attempt_count} of {arrivalVerification.max_attempts}</p><p>The stored code is hashed and is never returned to the professional.</p></section> : null}
+        {job.pause_reason ? <section className="panel-card"><h2>Work paused</h2><p>{job.pause_reason}</p><p>The job remains visible and cannot resume while a submitted change order awaits customer approval.</p></section> : null}
+        <JobEvidence jobId={job.id} media={media} />
         <section className="panel-card">
           <h2><History size={18} /> Job history</h2>
           <div className="timeline-list">{history.map((entry) => <div key={entry.id}><span className="timeline-dot" /><div><strong>{entry.to_status.replaceAll("_", " ")}</strong><p>{entry.actor_role ?? "system"} · {new Date(entry.created_at).toLocaleString("en-PK", { timeZone: "Asia/Karachi" })}</p></div></div>)}</div>
@@ -96,6 +103,9 @@ export function JobDetail({
       </div>
       <div>
         <JobActions jobId={job.id} role={role} status={job.status} version={job.version} hasActiveLocationSession={Boolean(activeSession)} />
+        {["arrived", "inspecting", "awaiting_quotation", "awaiting_approval", "approved", "in_progress", "paused", "completion_submitted", "completed"].includes(job.status)
+          ? <ExecutionActions jobId={job.id} role={role} status={job.status} version={job.version} />
+          : null}
         <Link className="dashboard-back" href={`/${role}/jobs`}>Back to jobs</Link>
       </div>
     </div>

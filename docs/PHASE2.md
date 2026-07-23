@@ -85,6 +85,22 @@ Checkpoint 4 adds:
 
 The booking/arrival integration path now exercises request creation, matching, offers, selection, rescheduling, confirmation replay, job creation, en-route transition, an invalid attempt that remains counted, arrival verification, automatic location stop, cancellation preview, and a post-arrival no-show guard. Its isolated records are removed and verified absent after every run.
 
+## Inspection, quotations, and job execution
+
+Checkpoint 5 adds:
+
+- verified-arrival inspection start/completion with findings, recommended work, and safety notes
+- itemized quotations using integer minor units, immutable submitted versions, validity, deposits, warranty, terms, and exclusions
+- explicit customer approval, rejection, clarification, or revision requests with idempotent financial authorization and preserved decisions
+- customer-approved material responsibility records
+- change orders for scope, price, material, and schedule changes; non-emergency affected work pauses until approval
+- private signed job evidence for before, inspection, during, receipt, change-order, and after-work stages
+- rate-limited plain-text job chat, system lifecycle messages, reply targets, read state, moderation status, and retained records
+- approved-work start, documented pause/resume, final evidence enforcement, calculated completion totals, customer issue reporting, resubmission, and explicit completion confirmation
+- dedicated customer and professional screens for inspections, quotations, change orders, job chat, evidence, and completion
+
+The integration path now continues through inspection, a requested quotation revision, immutable version two approval, work start, chat/read state, a change order that pauses work, approval and resume, final evidence, an issue-reported completion, resubmission, and customer confirmation. Cleanup verifies the isolated records and users are absent.
+
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
 
 ## Mobile readiness

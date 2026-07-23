@@ -37,6 +37,27 @@ async function createTestUser(kind) {
 
 async function cleanup() {
   for (const jobId of ids.jobs) {
+    const [{ data: quotations }, { data: messages }] = await Promise.all([
+      admin.from("job_quotations").select("id").eq("job_id", jobId),
+      admin.from("job_messages").select("id").eq("job_id", jobId),
+    ]);
+    const quotationIds = quotations?.map((item) => item.id) ?? [];
+    const messageIds = messages?.map((item) => item.id) ?? [];
+    if (messageIds.length) {
+      await admin.from("job_message_reads").delete().in("message_id", messageIds);
+      await admin.from("job_message_attachments").delete().in("message_id", messageIds);
+    }
+    await admin.from("job_messages").delete().eq("job_id", jobId);
+    await admin.from("job_completions").delete().eq("job_id", jobId);
+    await admin.from("job_change_orders").delete().eq("job_id", jobId);
+    await admin.from("job_material_items").delete().eq("job_id", jobId);
+    if (quotationIds.length) {
+      await admin.from("quotation_decisions").delete().in("quotation_id", quotationIds);
+      await admin.from("job_quotation_items").delete().in("quotation_id", quotationIds);
+    }
+    await admin.from("job_quotations").delete().eq("job_id", jobId);
+    await admin.from("job_media").delete().eq("job_id", jobId);
+    await admin.from("job_inspections").delete().eq("job_id", jobId);
     await admin.from("domain_outbox").delete().eq("aggregate_id", jobId);
     await admin.from("audit_logs").delete().eq("entity_id", jobId);
     await admin.from("jobs").delete().eq("id", jobId);
@@ -62,7 +83,15 @@ async function cleanup() {
     await admin.from("audit_logs").delete().eq("actor_user_profile_id", profileId);
   }
   for (const propertyId of ids.properties) await admin.from("properties").delete().eq("id", propertyId);
-  for (const authUserId of ids.authUsers) await admin.auth.admin.deleteUser(authUserId);
+  for (const authUserId of ids.authUsers) {
+    let deletion = await admin.auth.admin.deleteUser(authUserId);
+    if (deletion.error) {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      deletion = await admin.auth.admin.deleteUser(authUserId);
+    }
+    if (deletion.error) throw deletion.error;
+  }
+  await new Promise((resolve) => setTimeout(resolve, 500));
   const cleanupChecks = await Promise.all([
     admin.from("jobs").select("id", { count: "exact", head: true }).in("id", ids.jobs.length ? ids.jobs : [randomUUID()]),
     admin.from("bookings").select("id", { count: "exact", head: true }).in("id", ids.bookings.length ? ids.bookings : [randomUUID()]),
@@ -73,6 +102,7 @@ async function cleanup() {
     if (result.error) throw result.error;
     assert.equal(result.count, 0);
   }
+  console.log("phase2-marketplace-integration-cleanup=verified");
 }
 
 try {
@@ -373,6 +403,218 @@ try {
   });
   assert.match(postArrivalCancellationError?.message ?? "", /BOOKING_NOT_CANCELLABLE/);
 
+  const { data: arrivedJob, error: arrivedJobError } = await admin.from("jobs")
+    .select("version,status").eq("id", job.id).single();
+  if (arrivedJobError || !arrivedJob) throw arrivedJobError ?? new Error("Arrived job refresh failed.");
+  const { data: inspection, error: inspectionStartError } = await admin.rpc("start_job_inspection", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_expected_version: arrivedJob.version,
+  });
+  if (inspectionStartError || !inspection) throw inspectionStartError ?? new Error("Inspection start failed.");
+  const { data: completedInspection, error: inspectionCompleteError } = await admin.rpc("complete_job_inspection", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_inspection_id: inspection.id,
+    p_expected_version: inspection.version,
+    p_findings: "The integration inspection found a replaceable failed component.",
+    p_recommended_work: "Replace the failed component and verify safe operation under load.",
+    p_safety_notes: "Power must remain isolated while the component is replaced.",
+  });
+  if (inspectionCompleteError || !completedInspection) throw inspectionCompleteError ?? new Error("Inspection completion failed.");
+
+  const quotationPayload = {
+    deposit_required_minor: 0,
+    estimated_duration_minutes: 120,
+    warranty_days: 30,
+    terms: "Work is limited to the itemized repair after explicit customer approval.",
+    exclusions: "Unrelated hidden damage is excluded and requires a change order.",
+    notes: "Integration quotation version one.",
+    valid_until: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+    items: [
+      { item_type: "labor", description: "Approved repair labor", quantity: 1, unit: "job", unit_price_minor: 50_000, display_order: 0 },
+      { item_type: "material", description: "Replacement component", quantity: 1, unit: "item", unit_price_minor: 20_000, material_source: "professional", display_order: 1 },
+    ],
+  };
+  const { data: quotationV1, error: quotationV1Error } = await admin.rpc("save_job_quotation", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_quotation_id: null,
+    p_expected_version: 0,
+    p_payload: quotationPayload,
+  });
+  if (quotationV1Error || !quotationV1) throw quotationV1Error ?? new Error("Quotation v1 save failed.");
+  const { data: submittedV1, error: submittedV1Error } = await admin.rpc("submit_job_quotation", {
+    p_actor_profile_id: professionalId,
+    p_quotation_id: quotationV1.id,
+    p_expected_version: quotationV1.version,
+    p_idempotency_key: `integration-quotation-v1:${randomUUID()}`,
+    p_request_hash: hash({ quotationId: quotationV1.id, version: quotationV1.version }),
+  });
+  if (submittedV1Error || !submittedV1) throw submittedV1Error ?? new Error("Quotation v1 submit failed.");
+  const { data: revisionRequested, error: revisionError } = await admin.rpc("decide_job_quotation", {
+    p_actor_profile_id: customerId,
+    p_quotation_id: submittedV1.id,
+    p_expected_version: submittedV1.version,
+    p_decision: "revision_requested",
+    p_reason: "Please clarify the replacement component and retain the same warranty.",
+    p_idempotency_key: `integration-quotation-revision:${randomUUID()}`,
+    p_request_hash: hash({ quotationId: submittedV1.id, decision: "revision_requested" }),
+  });
+  if (revisionError || !revisionRequested) throw revisionError ?? new Error("Quotation revision request failed.");
+  assert.equal(revisionRequested.status, "revised");
+
+  const quotationV2Payload = {
+    ...quotationPayload,
+    notes: "Integration quotation version two with clarified material responsibility.",
+  };
+  const { data: quotationV2, error: quotationV2Error } = await admin.rpc("save_job_quotation", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_quotation_id: null,
+    p_expected_version: 0,
+    p_payload: quotationV2Payload,
+  });
+  if (quotationV2Error || !quotationV2) throw quotationV2Error ?? new Error("Quotation v2 save failed.");
+  assert.equal(quotationV2.version_number, 2);
+  const { data: submittedV2, error: submittedV2Error } = await admin.rpc("submit_job_quotation", {
+    p_actor_profile_id: professionalId,
+    p_quotation_id: quotationV2.id,
+    p_expected_version: quotationV2.version,
+    p_idempotency_key: `integration-quotation-v2:${randomUUID()}`,
+    p_request_hash: hash({ quotationId: quotationV2.id, version: quotationV2.version }),
+  });
+  if (submittedV2Error || !submittedV2) throw submittedV2Error ?? new Error("Quotation v2 submit failed.");
+  const { data: approvedQuotation, error: approvalError } = await admin.rpc("decide_job_quotation", {
+    p_actor_profile_id: customerId,
+    p_quotation_id: submittedV2.id,
+    p_expected_version: submittedV2.version,
+    p_decision: "approved",
+    p_reason: "",
+    p_idempotency_key: `integration-quotation-approve:${randomUUID()}`,
+    p_request_hash: hash({ quotationId: submittedV2.id, decision: "approved" }),
+  });
+  if (approvalError || !approvedQuotation) throw approvalError ?? new Error("Quotation approval failed.");
+  assert.equal(approvedQuotation.status, "approved");
+
+  const { data: approvedJob, error: approvedJobError } = await admin.from("jobs")
+    .select("version,status").eq("id", job.id).single();
+  if (approvedJobError || !approvedJob) throw approvedJobError ?? new Error("Approved job refresh failed.");
+  const { data: workingJob, error: workStartError } = await admin.rpc("start_job_work", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_expected_version: approvedJob.version,
+  });
+  if (workStartError || !workingJob) throw workStartError ?? new Error("Work start failed.");
+  assert.equal(workingJob.status, "in_progress");
+
+  const { data: customerMessage, error: messageError } = await admin.rpc("send_job_message", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "customer",
+    p_job_id: job.id,
+    p_body: "Please confirm when the replacement component has been installed.",
+    p_reply_to_message_id: null,
+  });
+  if (messageError || !customerMessage) throw messageError ?? new Error("Job message failed.");
+  const { data: messageRead, error: messageReadError } = await admin.rpc("mark_job_message_read", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_message_id: customerMessage.id,
+  });
+  if (messageReadError || !messageRead) throw messageReadError ?? new Error("Message read failed.");
+
+  const changePayload = {
+    reason: "Additional hidden wear was discovered during approved work.",
+    description: "Replace one additional worn connector before final testing.",
+    evidence_summary: "During-work evidence shows the worn connector.",
+    labor_change_minor: 5_000,
+    material_change_minor: 3_000,
+    other_change_minor: 0,
+    schedule_change_minutes: 30,
+    emergency_safety_exception: false,
+    emergency_justification: "",
+  };
+  const { data: changeOrder, error: changeSaveError } = await admin.rpc("save_job_change_order", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_change_order_id: null,
+    p_expected_version: 0,
+    p_payload: changePayload,
+  });
+  if (changeSaveError || !changeOrder) throw changeSaveError ?? new Error("Change order save failed.");
+  const { data: submittedChange, error: changeSubmitError } = await admin.rpc("submit_job_change_order", {
+    p_actor_profile_id: professionalId,
+    p_change_order_id: changeOrder.id,
+    p_expected_version: changeOrder.version,
+  });
+  if (changeSubmitError || !submittedChange) throw changeSubmitError ?? new Error("Change order submit failed.");
+  const { data: pausedForApproval } = await admin.from("jobs").select("status").eq("id", job.id).single();
+  assert.equal(pausedForApproval?.status, "paused");
+  const { data: approvedChange, error: changeDecisionError } = await admin.rpc("decide_job_change_order", {
+    p_actor_profile_id: customerId,
+    p_change_order_id: submittedChange.id,
+    p_decision: "approved",
+    p_reason: "",
+  });
+  if (changeDecisionError || !approvedChange) throw changeDecisionError ?? new Error("Change order approval failed.");
+  const { data: pausedJob } = await admin.from("jobs").select("version").eq("id", job.id).single();
+  const { data: resumedJob, error: resumeError } = await admin.rpc("resume_job_work", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_expected_version: pausedJob.version,
+  });
+  if (resumeError || !resumedJob) throw resumeError ?? new Error("Work resume failed.");
+
+  const { error: evidenceError } = await admin.from("job_media").insert({
+    job_id: job.id,
+    uploaded_by: professionalId,
+    media_stage: "after_work",
+    media_type: "image",
+    storage_path: `${professionalId}/${job.id}/integration-after-work.jpg`,
+    mime_type: "image/jpeg",
+    file_size: 1024,
+    caption: "Integration-only final evidence record.",
+  });
+  if (evidenceError) throw evidenceError;
+  const { data: completion, error: completionError } = await admin.rpc("submit_job_completion", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_expected_version: resumedJob.version,
+    p_summary: "Replaced the failed component and additional approved connector, then verified safe operation.",
+    p_outstanding_notes: "Customer should monitor normal operation during the warranty period.",
+  });
+  if (completionError || !completion) throw completionError ?? new Error("Completion submission failed.");
+  assert.equal(completion.final_price_minor, 78_000);
+  const { data: issueCompletion, error: issueError } = await admin.rpc("decide_job_completion", {
+    p_actor_profile_id: customerId,
+    p_job_id: job.id,
+    p_decision: "issue_reported",
+    p_notes: "Please recheck the final connector seating before I confirm completion.",
+    p_idempotency_key: `integration-completion-issue:${randomUUID()}`,
+    p_request_hash: hash({ jobId: job.id, decision: "issue_reported" }),
+  });
+  if (issueError || !issueCompletion) throw issueError ?? new Error("Completion issue report failed.");
+  const { data: issueJob } = await admin.from("jobs").select("version,status").eq("id", job.id).single();
+  assert.equal(issueJob?.status, "in_progress");
+  const { data: resubmittedCompletion, error: resubmitError } = await admin.rpc("submit_job_completion", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_expected_version: issueJob.version,
+    p_summary: "Rechecked and secured the connector seating, then repeated the safe-operation test.",
+    p_outstanding_notes: "No outstanding work remains.",
+  });
+  if (resubmitError || !resubmittedCompletion) throw resubmitError ?? new Error("Completion resubmission failed.");
+  const { data: confirmedCompletion, error: completionConfirmError } = await admin.rpc("decide_job_completion", {
+    p_actor_profile_id: customerId,
+    p_job_id: job.id,
+    p_decision: "confirmed",
+    p_notes: "The corrected work is complete.",
+    p_idempotency_key: `integration-completion-confirm:${randomUUID()}`,
+    p_request_hash: hash({ jobId: job.id, decision: "confirmed" }),
+  });
+  if (completionConfirmError || !confirmedCompletion) throw completionConfirmError ?? new Error("Completion confirmation failed.");
+  assert.equal(confirmedCompletion.customer_decision, "confirmed");
+
   const [{ count: snapshotCount }, { count: bookingCount }, { count: candidateCount }] = await Promise.all([
     admin.from("accepted_offer_snapshots").select("id", { count: "exact", head: true }).eq("request_id", draft.id),
     admin.from("bookings").select("id", { count: "exact", head: true }).eq("request_id", draft.id),
@@ -381,7 +623,7 @@ try {
   assert.equal(snapshotCount, 1);
   assert.equal(bookingCount, 1);
   assert.equal(candidateCount, 1);
-  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 confirm_replay=1 en_route=1 invalid_attempt_persisted=1 arrival=verified location_auto_stopped=1 cancellation_fee=0 post_arrival_no_show_blocked=1 post_arrival_cancel_blocked=1 cleanup=verified");
+  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 en_route=1 arrival=verified inspection=1 quotation_versions=2 quotation_approved=1 work_started=1 chat_read=1 change_order_approved=1 completion_issue=1 completion_confirmed=1 safety_guards=2");
 } finally {
   await cleanup();
 }

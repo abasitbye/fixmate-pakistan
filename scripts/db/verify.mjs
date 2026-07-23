@@ -42,6 +42,9 @@ const expectedTables = [
   "professional_offer_items", "professional_offers", "request_matching_candidates",
   "service_request_media", "service_request_status_history", "service_requests",
   "booking_status_history", "cancellation_policies", "job_location_sessions", "job_location_points",
+  "job_inspections", "job_quotations", "job_quotation_items", "quotation_decisions",
+  "job_media", "job_material_items", "job_change_orders", "job_messages",
+  "job_message_attachments", "job_message_reads", "job_completions",
 ];
 
 try {
@@ -62,7 +65,7 @@ try {
       (select count(*)::int from public.service_categories) as categories,
       (select count(*)::int from public.service_subcategories) as subcategories,
       (select count(*)::int from public.cities) as cities,
-      (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies','service-request-media')) as buckets,
+      (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies','service-request-media','job-evidence')) as buckets,
       (select count(*)::int from public.system_settings where key like 'phase2.%' and value = 'false'::jsonb) as disabled_phase2_flags,
       (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
         'create_service_request_draft','update_service_request_draft','submit_service_request','cancel_service_request'
@@ -78,10 +81,18 @@ try {
         'start_job_location_session','record_job_location_point','stop_job_location_session',
         'purge_expired_job_location_data'
       )) as booking_commands,
+      (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
+        'append_job_system_message','start_job_inspection','complete_job_inspection',
+        'save_job_quotation','submit_job_quotation','decide_job_quotation',
+        'save_job_change_order','submit_job_change_order','decide_job_change_order',
+        'withdraw_job_change_order','send_job_message','mark_job_message_read',
+        'start_job_work','pause_job_work','resume_job_work',
+        'submit_job_completion','decide_job_completion'
+      )) as execution_commands,
       (select count(*)::int from pg_policies where schemaname = 'public') as policies
   `;
 
-  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 4 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.policies < 50) {
+  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 5 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.execution_commands !== 17 || counts.policies < 60) {
     throw new Error("Seed or policy verification failed.");
   }
 
@@ -90,6 +101,7 @@ try {
   console.log(`verified phase2_flags_disabled=${counts.disabled_phase2_flags} request_commands=${counts.request_commands}`);
   console.log(`verified matching_offer_commands=${counts.matching_commands}`);
   console.log(`verified booking_arrival_commands=${counts.booking_commands}`);
+  console.log(`verified job_execution_commands=${counts.execution_commands}`);
 } finally {
   await sql.end({ timeout: 5 });
 }

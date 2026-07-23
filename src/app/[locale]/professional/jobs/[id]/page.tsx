@@ -16,9 +16,11 @@ export default async function ProfessionalJobPage({ params }: { params: Promise<
   const result = await getJob(context, id);
   if (!result.data || result.data.professional_id !== context.profile.id) notFound();
   const booking = await getBooking(context, result.data.booking_id);
+  const { data: media } = await context.supabase.from("job_media").select("id,media_stage,media_type,mime_type,file_size,caption").eq("job_id", id).is("deleted_at", null).order("created_at");
   return <JobDetail
     job={result.data as unknown as Parameters<typeof JobDetail>[0]["job"]}
     role="professional"
     exactAddress={booking.exactAddress}
+    media={media ?? []}
   />;
 }

@@ -14,9 +14,11 @@ export default async function CustomerJobPage({ params }: { params: Promise<{ lo
   if (!await isMarketplaceFeatureEnabled("phase2.jobs_enabled")) redirect(localizedPath(locale, "/customer"));
   const result = await getJob(context, id);
   if (!result.data || result.data.customer_id !== context.profile.id) notFound();
+  const { data: media } = await context.supabase.from("job_media").select("id,media_stage,media_type,mime_type,file_size,caption").eq("job_id", id).is("deleted_at", null).order("created_at");
   return <JobDetail
     job={result.data as unknown as Parameters<typeof JobDetail>[0]["job"]}
     role="customer"
     arrivalVerification={result.arrivalVerification}
+    media={media ?? []}
   />;
 }
