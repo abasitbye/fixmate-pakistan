@@ -33,13 +33,44 @@ export async function POST(request: NextRequest) {
       return apiError(400, "INVALID_OTP", "That code is invalid or has expired.");
     }
 
-    const { data: profile } = await supabase
+    const { data: existingProfile, error: profileError } = await supabase
       .from("user_profiles")
       .select("account_status,display_name,onboarding_completed_at")
       .eq("auth_user_id", data.user.id)
-      .single();
+      .maybeSingle();
 
-    if (!profile || profile.account_status !== "active") {
+    if (profileError) throw profileError;
+
+    let profile = existingProfile;
+    if (!profile) {
+      const { data: provisionedProfile, error: provisionError } = await supabase.rpc(
+        "ensure_current_user_profile",
+      );
+      if (provisionError || !provisionedProfile) {
+        Sentry.captureException(provisionError ?? new Error("Profile provisioning returned no profile"), {
+          tags: { operation: "verify_email_otp_profile_provisioning" },
+          user: { id: data.user.id },
+        });
+        await supabase.auth.signOut();
+        return apiError(
+          503,
+          "ACCOUNT_SETUP_INCOMPLETE",
+          "We could not finish setting up this account. Please try again.",
+        );
+      }
+      profile = provisionedProfile;
+    }
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      return apiError(
+        503,
+        "ACCOUNT_SETUP_INCOMPLETE",
+        "We could not finish setting up this account. Please try again.",
+      );
+    }
+
+    if (profile.account_status !== "active") {
       await supabase.auth.signOut();
       return apiError(403, "ACCOUNT_RESTRICTED", "This account is currently restricted. Contact support for help.");
     }
