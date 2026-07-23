@@ -41,6 +41,20 @@ The first forward-only Phase 2 migration adds:
 - idempotency keys
 - the transactional domain outbox
 
+## Customer request workflow
+
+Checkpoint 2 adds the guided customer request experience and versioned APIs:
+
+- `GET|POST /api/v1/requests`
+- `GET|PATCH /api/v1/requests/:id`
+- `POST /api/v1/requests/:id/submit`
+- `POST /api/v1/requests/:id/cancel`
+- private signed request-media preparation, finalization, and deletion
+
+Draft creation, submission, and cancellation use database transactions. They enforce ownership, account state, optimistic concurrency, caller idempotency, append-only history, audit records, notifications, and transactional outbox events. Exact property details are encrypted into a selection-time snapshot; unmatched professionals receive only a separately projected safe request view in the matching layer.
+
+The customer pages are implemented but redirect to the existing dashboard while the request and marketplace flags remain disabled. This prevents a request from entering an unavailable matching workflow before Checkpoint 3 is ready.
+
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
 
 ## Mobile readiness

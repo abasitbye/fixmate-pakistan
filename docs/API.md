@@ -5,6 +5,7 @@ JSON routes return `{ success: true, data, error: null }` or `{ success: false, 
 - `/api/v1/auth/*`: email OTP, session, logout.
 - `/api/v1/me*`: profile, consent-backed setup, account purpose.
 - `/api/v1/properties*`: customer-owned properties.
+- `/api/v1/requests*`: idempotent customer request drafts, private media, submission, and cancellation (Phase 2 flag controlled).
 - `/api/v1/professional/application*`: drafts, services, areas, availability, signed documents, references, payout readiness, submission.
 - `/api/v1/notifications*` and `/api/v1/notification-devices`: in-app state and Firebase devices.
 - `/api/v1/public/*`: catalog, locations, verification requirements.
