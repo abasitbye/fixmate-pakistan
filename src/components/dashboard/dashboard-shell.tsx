@@ -33,6 +33,12 @@ export function DashboardShell({ children, displayName, roles, section = "custom
           <div className="dashboard-user"><LanguageSwitcher /><span><small>Signed in as</small><strong>{displayName || "FixMate user"}</strong></span></div>
         </header>
         <main id="main-content" className="dashboard-content">{children}</main>
+        <nav className="dashboard-bottom-nav" aria-label="Mobile dashboard navigation">
+          <Link href="/customer"><LayoutDashboard size={19} /><span>Home</span></Link>
+          <Link href="/customer/properties"><MapPinHouse size={19} /><span>Properties</span></Link>
+          <Link href="/customer/notifications"><Bell size={19} /><span>Updates</span></Link>
+          <Link href="/customer/settings"><Settings size={19} /><span>Settings</span></Link>
+        </nav>
       </div>
     </div>
   );

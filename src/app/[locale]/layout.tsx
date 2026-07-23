@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   description:
     "Connect with verified home-service professionals in Islamabad and Rawalpindi for reliable repairs and maintenance.",
   applicationName: "FixMate Pakistan",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "FixMate", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",
@@ -67,4 +70,3 @@ export default async function LocaleLayout({
     </html>
   );
 }
-

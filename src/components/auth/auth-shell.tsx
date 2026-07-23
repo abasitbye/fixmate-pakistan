@@ -4,7 +4,7 @@ import { BrandMark } from "@/components/brand/brand-mark";
 
 export function AuthShell({ eyebrow, title, lead, children }: { eyebrow: string; title: string; lead: string; children: ReactNode }) {
   return (
-    <main className="auth-page">
+    <main id="main-content" className="auth-page">
       <section className="auth-aside" aria-label="FixMate trust commitment">
         <BrandMark />
         <div>

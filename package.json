@@ -14,10 +14,12 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:migrate": "node scripts/db/migrate.mjs",
     "db:status": "node scripts/db/migrate.mjs --status",
-    "db:verify": "node scripts/db/verify.mjs"
+    "db:verify": "node scripts/db/verify.mjs",
+    "admin:grant-super": "node scripts/admin/grant-super-admin.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -38,6 +40,7 @@
   },
   "devDependencies": {
     "@next/env": "16.2.11",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",

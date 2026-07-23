@@ -1,0 +1,2 @@
+import type {MetadataRoute} from "next";
+export default function robots():MetadataRoute.Robots{return {rules:[{userAgent:"*",allow:["/","/services","/how-it-works","/safety","/service-areas","/about","/faq","/contact","/privacy","/terms","/professional-code","/become-a-professional"],disallow:["/api/","/auth/","/customer/","/professional/","/admin/","/support/"]}],sitemap:"https://fixmate-pakistan.vercel.app/sitemap.xml",host:"https://fixmate-pakistan.vercel.app"}}

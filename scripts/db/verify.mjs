@@ -30,7 +30,7 @@ const sql = postgres(normalizeDatabaseUrl(rawDatabaseUrl), {
 });
 
 const expectedTables = [
-  "audit_logs", "cities", "consent_types", "countries", "customer_profiles",
+  "audit_logs", "cities", "consent_types", "contact_messages", "countries", "customer_profiles",
   "notification_devices", "notification_preferences", "notifications", "professional_availability_overrides",
   "professional_availability_schedules", "professional_documents", "professional_payout_profiles",
   "professional_profiles", "professional_references", "professional_service_areas", "professional_services",

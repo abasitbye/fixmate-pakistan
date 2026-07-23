@@ -1,0 +1,2 @@
+import {WifiOff} from "lucide-react"; import {BrandMark} from "@/components/brand/brand-mark"; import {Link} from "@/i18n/navigation";
+export default function Page(){return <main id="main-content" className="offline-page"><BrandMark/><span className="status-panel__icon"><WifiOff size={26}/></span><h1>You’re offline</h1><p>Reconnect to access secure account data. FixMate does not cache private dashboard information for offline use.</p><Link className="button button--primary" href="/">Try the homepage</Link></main>}

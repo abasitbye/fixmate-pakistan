@@ -439,3 +439,10 @@ img { max-width: 100%; height: auto; }
 .review-item > div:first-child { min-width:0; }
 .inline-actions { display:flex; align-items:center; gap:.4rem; }
 .inline-actions button { min-height:32px; padding:.35rem .55rem; border:1px solid var(--line); border-radius:.5rem; color:var(--ink-700); background:white; font-size:.68rem; font-weight:750; cursor:pointer; }
+.dashboard-bottom-nav { position:fixed; inset-inline:0; bottom:0; z-index:45; min-height:64px; display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); background:rgba(255,255,255,.97); backdrop-filter:blur(12px); }
+.dashboard-bottom-nav a { display:grid; place-items:center; align-content:center; gap:.2rem; color:var(--ink-500); font-size:.61rem; font-weight:700; }
+.dashboard-bottom-nav a:hover { color:var(--blue-700); }
+.offline-page { min-height:100svh; width:min(calc(100% - 2rem),560px); margin-inline:auto; display:grid; justify-items:start; align-content:center; gap:1rem; }
+.offline-page h1 { margin:0; color:var(--navy-950); font-size:clamp(2.2rem,8vw,4rem); }
+.offline-page p { margin:0 0 .5rem; color:var(--ink-500); line-height:1.7; }
+@media (min-width:960px) { .dashboard-bottom-nav { display:none; } }

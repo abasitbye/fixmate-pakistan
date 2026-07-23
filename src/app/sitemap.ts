@@ -1,0 +1,3 @@
+import type {MetadataRoute} from "next";
+const paths=["","/services","/how-it-works","/safety","/service-areas","/about","/faq","/contact","/privacy","/terms","/professional-code","/become-a-professional"];
+export default function sitemap():MetadataRoute.Sitemap{const base="https://fixmate-pakistan.vercel.app";return paths.flatMap(path=>["en","ur","ur-Latn"].map(locale=>({url:`${base}${locale==="en"?"":`/${locale}`}${path}`,lastModified:new Date(),changeFrequency:path===""?"weekly" as const:"monthly" as const,priority:path===""?1:.7,alternates:{languages:{en:`${base}${path}`,ur:`${base}/ur${path}`,"ur-Latn":`${base}/ur-Latn${path}`}}})))}

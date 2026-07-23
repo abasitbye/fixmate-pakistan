@@ -1,0 +1,2 @@
+import type {MetadataRoute} from "next";
+export default function manifest():MetadataRoute.Manifest{return {name:"FixMate Pakistan",short_name:"FixMate",description:"Trusted, managed home services for Pakistan.",start_url:"/",display:"standalone",background_color:"#f6f8fb",theme_color:"#0755b7",orientation:"portrait-primary",categories:["business","lifestyle","utilities"],icons:[{src:"/brand/fixmate-logo.png",sizes:"1254x1254",type:"image/png",purpose:"any"},{src:"/brand/fixmate-logo.png",sizes:"1254x1254",type:"image/png",purpose:"maskable"}]}}

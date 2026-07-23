@@ -1,0 +1,2 @@
+export const professionalTransitions:Record<string,readonly string[]>={draft:["submitted"],submitted:["under_review"],under_review:["changes_requested","approved","rejected"],changes_requested:["submitted"],approved:["suspended"],rejected:[],suspended:["approved"]};
+export function canTransitionProfessionalApplication(from:string,to:string){return professionalTransitions[from]?.includes(to)??false;}
