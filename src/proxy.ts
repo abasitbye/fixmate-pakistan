@@ -11,8 +11,10 @@ export async function proxy(request: NextRequest) {
   return updateSession(request, internationalizedResponse);
 }
 
+// Next.js requires this object to remain statically analyzable. Keep the matcher
+// synchronized with src/lib/routing/proxy-config.ts, which is used in unit tests.
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|robots.txt|sitemap.xml|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!api(?:/|$)|_next/static|_next/image|favicon.ico|icon|apple-icon|manifest.webmanifest|robots.txt|sitemap.xml|firebase-messaging-sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
