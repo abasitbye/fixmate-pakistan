@@ -14,7 +14,7 @@ const admin = createClient(new URL(configuredUrl).origin, serviceKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const ids = { authUsers: [], profiles: [], properties: [], requests: [], offers: [], bookings: [] };
+const ids = { authUsers: [], profiles: [], properties: [], requests: [], offers: [], bookings: [], jobs: [] };
 const tomorrow = new Date(Date.now() + 2 * 86_400_000);
 const serviceDate = tomorrow.toISOString().slice(0, 10);
 const dayOfWeek = tomorrow.getUTCDay();
@@ -36,6 +36,11 @@ async function createTestUser(kind) {
 }
 
 async function cleanup() {
+  for (const jobId of ids.jobs) {
+    await admin.from("domain_outbox").delete().eq("aggregate_id", jobId);
+    await admin.from("audit_logs").delete().eq("entity_id", jobId);
+    await admin.from("jobs").delete().eq("id", jobId);
+  }
   for (const bookingId of ids.bookings) {
     await admin.from("domain_outbox").delete().eq("aggregate_id", bookingId);
     await admin.from("audit_logs").delete().eq("entity_id", bookingId);
@@ -58,6 +63,16 @@ async function cleanup() {
   }
   for (const propertyId of ids.properties) await admin.from("properties").delete().eq("id", propertyId);
   for (const authUserId of ids.authUsers) await admin.auth.admin.deleteUser(authUserId);
+  const cleanupChecks = await Promise.all([
+    admin.from("jobs").select("id", { count: "exact", head: true }).in("id", ids.jobs.length ? ids.jobs : [randomUUID()]),
+    admin.from("bookings").select("id", { count: "exact", head: true }).in("id", ids.bookings.length ? ids.bookings : [randomUUID()]),
+    admin.from("service_requests").select("id", { count: "exact", head: true }).in("id", ids.requests.length ? ids.requests : [randomUUID()]),
+    admin.from("user_profiles").select("id", { count: "exact", head: true }).in("id", ids.profiles.length ? ids.profiles : [randomUUID()]),
+  ]);
+  for (const result of cleanupChecks) {
+    if (result.error) throw result.error;
+    assert.equal(result.count, 0);
+  }
 }
 
 try {
@@ -155,8 +170,8 @@ try {
   if (matchingError || !matchingRun) throw matchingError ?? new Error("Matching failed.");
   assert.equal(matchingRun.invited_count, 1);
 
-  const startAt = new Date(`${serviceDate}T10:00:00+05:00`).toISOString();
-  const endAt = new Date(`${serviceDate}T12:00:00+05:00`).toISOString();
+  const startAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+  const endAt = new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString();
   const validUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   const offerPayload = {
     offer_type: "fixed_price",
@@ -223,6 +238,141 @@ try {
   if (replayError || !replay) throw replayError ?? new Error("Acceptance replay failed.");
   assert.equal(replay.id, booking.id);
 
+  const rescheduledStart = new Date(Date.now() + 2.5 * 60 * 60 * 1000).toISOString();
+  const rescheduledEnd = new Date(Date.now() + 4.5 * 60 * 60 * 1000).toISOString();
+  const { data: reschedule, error: rescheduleError } = await admin.rpc("request_booking_reschedule", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "customer",
+    p_booking_id: booking.id,
+    p_expected_version: booking.version,
+    p_proposed_start_at: rescheduledStart,
+    p_proposed_end_at: rescheduledEnd,
+    p_reason: "Integration test schedule proposal",
+  });
+  if (rescheduleError || !reschedule) throw rescheduleError ?? new Error("Reschedule request failed.");
+  const { data: rescheduledBooking, error: responseError } = await admin.rpc("respond_booking_reschedule", {
+    p_actor_profile_id: professionalId,
+    p_booking_id: booking.id,
+    p_reschedule_id: reschedule.id,
+    p_accept: true,
+  });
+  if (responseError || !rescheduledBooking) throw responseError ?? new Error("Reschedule response failed.");
+  assert.equal(rescheduledBooking.status, "rescheduled");
+  assert.equal(new Date(rescheduledBooking.scheduled_start_at).getTime(), new Date(rescheduledStart).getTime());
+
+  const confirmKey = `integration-confirm:${randomUUID()}`;
+  const confirmHash = hash({ bookingId: booking.id, version: rescheduledBooking.version });
+  const confirmArgs = {
+    p_actor_profile_id: professionalId,
+    p_booking_id: booking.id,
+    p_expected_version: rescheduledBooking.version,
+    p_idempotency_key: confirmKey,
+    p_request_hash: confirmHash,
+  };
+  const { data: job, error: confirmError } = await admin.rpc("confirm_booking", confirmArgs);
+  if (confirmError || !job) throw confirmError ?? new Error("Booking confirmation failed.");
+  ids.jobs.push(job.id);
+  assert.equal(job.status, "confirmed");
+  const { data: confirmReplay, error: confirmReplayError } = await admin.rpc("confirm_booking", confirmArgs);
+  if (confirmReplayError || !confirmReplay) throw confirmReplayError ?? new Error("Confirmation replay failed.");
+  assert.equal(confirmReplay.id, job.id);
+
+  const { data: confirmedBooking, error: confirmedBookingError } = await admin.from("bookings")
+    .select("status,exact_address_released_at").eq("id", booking.id).single();
+  if (confirmedBookingError || !confirmedBooking) throw confirmedBookingError ?? new Error("Confirmed booking refresh failed.");
+  assert.equal(confirmedBooking.status, "converted_to_job");
+  assert.ok(confirmedBooking.exact_address_released_at);
+
+  const { data: enRouteJob, error: enRouteError } = await admin.rpc("mark_job_en_route", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_expected_version: job.version,
+  });
+  if (enRouteError || !enRouteJob) throw enRouteError ?? new Error("En-route transition failed.");
+  assert.equal(enRouteJob.status, "en_route");
+
+  const { data: codeRows, error: codeError } = await admin.rpc("regenerate_arrival_code", {
+    p_actor_profile_id: customerId,
+    p_job_id: job.id,
+  });
+  if (codeError || !codeRows?.length) throw codeError ?? new Error("Arrival code generation failed.");
+  const arrivalCode = codeRows[0].arrival_code;
+  assert.match(arrivalCode, /^\d{6}$/);
+  const incorrectCode = String((Number(arrivalCode) + 1) % 1_000_000).padStart(6, "0");
+  const { data: invalidRows, error: invalidError } = await admin.rpc("verify_arrival_code", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_code: incorrectCode,
+  });
+  if (invalidError || !invalidRows?.length) throw invalidError ?? new Error("Invalid-code path failed.");
+  assert.equal(invalidRows[0].verification_status, "invalid");
+  const { data: attemptRecord, error: attemptError } = await admin.from("arrival_verifications")
+    .select("attempt_count,status").eq("id", codeRows[0].verification_id).single();
+  if (attemptError || !attemptRecord) throw attemptError ?? new Error("Arrival attempt refresh failed.");
+  assert.equal(attemptRecord.attempt_count, 1);
+  assert.equal(attemptRecord.status, "active");
+
+  const { data: locationSession, error: locationStartError } = await admin.rpc("start_job_location_session", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_consent: true,
+    p_ip_address: null,
+    p_user_agent: "FixMate integration test",
+  });
+  if (locationStartError || !locationSession) throw locationStartError ?? new Error("Location session start failed.");
+  const { data: locationPoint, error: locationPointError } = await admin.rpc("record_job_location_point", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_latitude: 33.6844,
+    p_longitude: 73.0479,
+    p_accuracy_meters: 25,
+  });
+  if (locationPointError || !locationPoint) throw locationPointError ?? new Error("Location point failed.");
+
+  const { data: verifiedRows, error: verifyError } = await admin.rpc("verify_arrival_code", {
+    p_actor_profile_id: professionalId,
+    p_job_id: job.id,
+    p_code: arrivalCode,
+  });
+  if (verifyError || !verifiedRows?.length) throw verifyError ?? new Error("Arrival verification failed.");
+  assert.equal(verifiedRows[0].verification_status, "verified");
+  assert.equal(verifiedRows[0].verified_job_status, "arrived");
+  const [{ data: endedSession }, { count: bookingHistoryCount }, { count: jobHistoryCount }] = await Promise.all([
+    admin.from("job_location_sessions").select("status,ended_at").eq("id", locationSession.id).single(),
+    admin.from("booking_status_history").select("id", { count: "exact", head: true }).eq("booking_id", booking.id),
+    admin.from("job_status_history").select("id", { count: "exact", head: true }).eq("job_id", job.id),
+  ]);
+  assert.equal(endedSession?.status, "ended");
+  assert.ok(endedSession?.ended_at);
+  assert.ok((bookingHistoryCount ?? 0) >= 5);
+  assert.equal(jobHistoryCount, 3);
+
+  const { data: cancellationPreview, error: cancellationPreviewError } = await admin.rpc("preview_booking_cancellation", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "customer",
+    p_booking_id: booking.id,
+  });
+  if (cancellationPreviewError || !cancellationPreview) throw cancellationPreviewError ?? new Error("Cancellation preview failed.");
+  assert.equal(cancellationPreview.feeMinor, 0);
+  assert.equal(cancellationPreview.requiresAcknowledgement, false);
+  const { error: postArrivalNoShowError } = await admin.rpc("record_booking_no_show", {
+    p_actor_profile_id: customerId,
+    p_booking_id: booking.id,
+    p_no_show_party: "customer",
+    p_reason: "Integration safety check must reject a no-show after verified arrival.",
+    p_evidence_reference: "integration-case-001",
+  });
+  assert.match(postArrivalNoShowError?.message ?? "", /NO_SHOW_NOT_RECORDABLE/);
+  const { error: postArrivalCancellationError } = await admin.rpc("cancel_booking", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "customer",
+    p_booking_id: booking.id,
+    p_expected_version: 1,
+    p_reason: "Integration safety check must reject cancellation after verified arrival.",
+    p_policy_acknowledged: false,
+  });
+  assert.match(postArrivalCancellationError?.message ?? "", /BOOKING_NOT_CANCELLABLE/);
+
   const [{ count: snapshotCount }, { count: bookingCount }, { count: candidateCount }] = await Promise.all([
     admin.from("accepted_offer_snapshots").select("id", { count: "exact", head: true }).eq("request_id", draft.id),
     admin.from("bookings").select("id", { count: "exact", head: true }).eq("request_id", draft.id),
@@ -231,7 +381,7 @@ try {
   assert.equal(snapshotCount, 1);
   assert.equal(bookingCount, 1);
   assert.equal(candidateCount, 1);
-  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 replay=1 snapshot=1 booking=1 address_released=0");
+  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 confirm_replay=1 en_route=1 invalid_attempt_persisted=1 arrival=verified location_auto_stopped=1 cancellation_fee=0 post_arrival_no_show_blocked=1 post_arrival_cancel_blocked=1 cleanup=verified");
 } finally {
   await cleanup();
 }

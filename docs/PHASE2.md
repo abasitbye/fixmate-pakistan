@@ -70,6 +70,21 @@ Checkpoint 3 adds:
 
 The integration suite creates isolated customer and approved-professional records, verifies matching through booking creation, confirms acceptance replay does not duplicate a booking, confirms the exact address remains unreleased, and removes every test record.
 
+## Booking, scheduling, and arrival
+
+Checkpoint 4 adds:
+
+- professional confirmation with an enforced confirmation deadline and idempotent job creation
+- participant-driven reschedule proposals, response deadlines, explicit acceptance or rejection, conflict revalidation, notifications, and schedule history
+- effective-dated cancellation policies with a fee preview and required acknowledgement only when an applicable policy permits a fee
+- support-reviewed no-show outcomes with evidence references for unilateral findings, appeal-oriented notifications, and guards against early or post-arrival findings
+- configurable en-route windows and customer notifications
+- cryptographically generated six-digit arrival codes, bcrypt hashes at rest, short expiry, persistent attempt limits, regeneration, audit events, and automatic location-session shutdown after successful verification
+- optional location sharing with explicit professional consent, visible stop controls, en-route-only collection, session expiry, arrival shutdown, and a short retention setting
+- customer and professional booking/job lists and detail screens backed by the same `/api/v1` contracts intended for future mobile clients
+
+The booking/arrival integration path now exercises request creation, matching, offers, selection, rescheduling, confirmation replay, job creation, en-route transition, an invalid attempt that remains counted, arrival verification, automatic location stop, cancellation preview, and a post-arrival no-show guard. Its isolated records are removed and verified absent after every run.
+
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
 
 ## Mobile readiness

@@ -41,6 +41,7 @@ const expectedTables = [
   "domain_outbox", "idempotency_keys", "job_status_history", "jobs", "matching_runs",
   "professional_offer_items", "professional_offers", "request_matching_candidates",
   "service_request_media", "service_request_status_history", "service_requests",
+  "booking_status_history", "cancellation_policies", "job_location_sessions", "job_location_points",
 ];
 
 try {
@@ -70,10 +71,17 @@ try {
         'run_request_matching','save_professional_offer','submit_professional_offer',
         'withdraw_professional_offer','accept_professional_offer'
       )) as matching_commands,
+      (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
+        'confirm_booking','request_booking_reschedule','respond_booking_reschedule',
+        'preview_booking_cancellation','cancel_booking','record_booking_no_show',
+        'mark_job_en_route','regenerate_arrival_code','verify_arrival_code',
+        'start_job_location_session','record_job_location_point','stop_job_location_session',
+        'purge_expired_job_location_data'
+      )) as booking_commands,
       (select count(*)::int from pg_policies where schemaname = 'public') as policies
   `;
 
-  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 4 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.policies < 40) {
+  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 4 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.policies < 50) {
     throw new Error("Seed or policy verification failed.");
   }
 
@@ -81,6 +89,7 @@ try {
   console.log(`verified roles=${counts.roles} categories=${counts.categories} subcategories=${counts.subcategories} cities=${counts.cities} private_buckets=${counts.buckets}`);
   console.log(`verified phase2_flags_disabled=${counts.disabled_phase2_flags} request_commands=${counts.request_commands}`);
   console.log(`verified matching_offer_commands=${counts.matching_commands}`);
+  console.log(`verified booking_arrival_commands=${counts.booking_commands}`);
 } finally {
   await sql.end({ timeout: 5 });
 }

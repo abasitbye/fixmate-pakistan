@@ -1,8 +1,11 @@
 import {
   Bell,
+  BadgeDollarSign,
   BriefcaseBusiness,
   Building2,
+  CalendarCheck2,
   ClipboardCheck,
+  ClipboardList,
   Headphones,
   House,
   LayoutDashboard,
@@ -63,8 +66,50 @@ const sectionLinks = {
   support: supportLinks,
 } as const;
 
-export function DashboardShell({ children, displayName, roles, section = "customer" }: { children: ReactNode; displayName: string | null; roles: string[]; section?: "customer" | "professional" | "admin" | "support" }) {
-  const navigationLinks = sectionLinks[section];
+export function DashboardShell({
+  children,
+  displayName,
+  roles,
+  section = "customer",
+  marketplaceNavigation,
+}: {
+  children: ReactNode;
+  displayName: string | null;
+  roles: string[];
+  section?: "customer" | "professional" | "admin" | "support";
+  marketplaceNavigation?: { requests: boolean; matching: boolean; jobs: boolean };
+}) {
+  let navigationLinks = [...sectionLinks[section]] as Array<{ href: string; label: string; icon: typeof LayoutDashboard }>;
+  if (section === "customer") {
+    const marketplaceLinks = [
+      ...(marketplaceNavigation?.requests ? [{ href: "/customer/requests", label: "Requests", icon: ClipboardList }] : []),
+      ...(marketplaceNavigation?.jobs ? [
+        { href: "/customer/bookings", label: "Bookings", icon: CalendarCheck2 },
+        { href: "/customer/jobs", label: "Jobs", icon: Wrench },
+      ] : []),
+    ];
+    navigationLinks = [navigationLinks[0], ...marketplaceLinks, ...navigationLinks.slice(1)];
+  }
+  if (section === "professional") {
+    const marketplaceLinks = [
+      ...(marketplaceNavigation?.matching ? [
+        { href: "/professional/requests", label: "Invitations", icon: ClipboardList },
+        { href: "/professional/offers", label: "Offers", icon: BadgeDollarSign },
+      ] : []),
+      ...(marketplaceNavigation?.jobs ? [
+        { href: "/professional/bookings", label: "Bookings", icon: CalendarCheck2 },
+        { href: "/professional/jobs", label: "Jobs", icon: Wrench },
+      ] : []),
+    ];
+    navigationLinks = [navigationLinks[0], ...marketplaceLinks, ...navigationLinks.slice(1)];
+  }
+  if (section === "support" && marketplaceNavigation?.jobs) {
+    navigationLinks = [
+      navigationLinks[0],
+      { href: "/support/bookings", label: "Bookings", icon: CalendarCheck2 },
+      ...navigationLinks.slice(1),
+    ];
+  }
   const mobileLinks = navigationLinks.slice(0, 4);
 
   return (
