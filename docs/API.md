@@ -14,6 +14,10 @@ JSON routes return `{ success: true, data, error: null }` or `{ success: false, 
 - `/api/v1/jobs/:id/quotations*` and `/api/v1/quotations*`: itemized immutable quotation versions and explicit customer decisions.
 - `/api/v1/jobs/:id/change-orders*` and `/api/v1/change-orders*`: changed-scope proposals and customer approval before non-emergency covered work continues.
 - `/api/v1/jobs/:id/messages*` and `/media*`: rate-limited job chat/read state and private signed evidence uploads.
+- `/api/v1/jobs/:id/payment*`, `/api/v1/payments*`, and `/api/v1/receipts`: payment lookup, idempotent cash/manual intent creation, professional receipt reporting, customer confirmation/disagreement, refund requests, and documents.
+- `/api/v1/professional/earnings` and `/professional/payouts`: professional-owned earnings and settlement history.
+- `/api/v1/admin/fees`, `/payouts`, `/refunds`, and `/reconciliation`: fee configuration, maker-checker payouts, refund accounting, and documented reconciliation.
+- `/api/v1/webhooks/payments/:provider`: signature-gated, adapter-backed, idempotent provider ingress; unavailable while no verified online adapter exists.
 - `/api/v1/professional/application*`: drafts, services, areas, availability, signed documents, references, payout readiness, submission.
 - `/api/v1/notifications*` and `/api/v1/notification-devices`: in-app state and Firebase devices.
 - `/api/v1/public/*`: catalog, locations, verification requirements.
@@ -23,3 +27,5 @@ JSON routes return `{ success: true, data, error: null }` or `{ success: false, 
 Arrival codes never appear in URLs or logs. Raw codes are returned only to the owning customer immediately after generation; the database stores only a bcrypt hash. Invalid verification attempts commit their counter before a safe error response is returned.
 
 Web authentication uses secure Supabase session cookies. Native clients can use equivalent Supabase bearer sessions while preserving the contracts. Staff authorization is checked per request and again in database workflows.
+
+Financial amounts are integer minor units. Payment, confirmation, refund, and payout creation require caller idempotency where duplication could recognize or move value. Cash/manual confirmation and every refund/payout post all affected records in one database transaction.

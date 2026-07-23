@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardCheck, FileText, LoaderCircle, MessageCircle, Pause, Play, RotateCcw } from "lucide-react";
+import { Banknote, ClipboardCheck, FileText, LoaderCircle, MessageCircle, Pause, Play, RotateCcw } from "lucide-react";
 import { useState } from "react";
 
 import { Link, useRouter } from "@/i18n/navigation";
@@ -54,6 +54,7 @@ export function ExecutionActions({ jobId, role, status, version }: { jobId: stri
         <button className="button button--primary" onClick={() => completionDecision("confirm")} disabled={Boolean(pending)}>Confirm completion</button>
         <button className="button button--ghost" onClick={() => completionDecision("report-issue")} disabled={Boolean(pending)}>Report incomplete work or damage</button>
       </> : null}
+      {status === "completed" ? <Link className="button button--primary" href={`/${role}/jobs/${jobId}/payment`}><Banknote size={17} /> Payment</Link> : null}
     </div>
     {pending ? <p><LoaderCircle className="spin" size={16} /> Saving the job update…</p> : null}
     {error ? <div className="form-alert form-alert--error" role="alert">{error}</div> : null}

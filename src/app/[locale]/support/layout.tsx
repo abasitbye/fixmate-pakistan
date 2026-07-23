@@ -18,6 +18,7 @@ export default async function Layout({ children, params }: { children: ReactNode
       requests: marketplace && flags["phase2.requests_enabled"],
       matching: marketplace && flags["phase2.matching_enabled"],
       jobs: marketplace && flags["phase2.jobs_enabled"],
+      payments: marketplace && flags["phase2.payments_enabled"],
     }}
   >{children}</DashboardShell>;
 }

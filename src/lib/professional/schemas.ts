@@ -40,7 +40,7 @@ export const professionalReferencesSchema = z.object({
 });
 
 export const payoutProfileSchema = z.object({
-  payoutMethod: z.enum(["bank", "easypaisa", "jazzcash"]),
+  payoutMethod: z.enum(["bank", "raast", "easypaisa", "jazzcash"]),
   accountTitle: z.string().trim().min(2).max(120),
   accountReference: z.string().trim().min(5).max(80),
 });

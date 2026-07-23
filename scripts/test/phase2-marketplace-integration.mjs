@@ -14,18 +14,24 @@ const admin = createClient(new URL(configuredUrl).origin, serviceKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-const ids = { authUsers: [], profiles: [], properties: [], requests: [], offers: [], bookings: [], jobs: [] };
+const ids = { authUsers: [], profiles: [], properties: [], requests: [], offers: [], bookings: [], jobs: [], webhookEvents: [] };
 const tomorrow = new Date(Date.now() + 2 * 86_400_000);
 const serviceDate = tomorrow.toISOString().slice(0, 10);
 const dayOfWeek = tomorrow.getUTCDay();
 const hash = (value) => createHash("sha256").update(JSON.stringify(value)).digest("hex");
 
 async function createTestUser(kind) {
-  const { data, error } = await admin.auth.admin.createUser({
-    email: `phase2-${kind}-${Date.now()}-${randomUUID()}@fixmate.invalid`,
-    email_confirm: true,
-    user_metadata: { display_name: `Phase 2 ${kind}` },
-  });
+  let data;
+  let error;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    ({ data, error } = await admin.auth.admin.createUser({
+      email: `phase2-${kind}-${Date.now()}-${randomUUID()}@fixmate.invalid`,
+      email_confirm: true,
+      user_metadata: { display_name: `Phase 2 ${kind}` },
+    }));
+    if (!error || error.code !== "bad_jwt") break;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+  }
   if (error || !data.user) throw error ?? new Error(`${kind} test user could not be created.`);
   ids.authUsers.push(data.user.id);
   const { data: profile, error: profileError } = await admin.from("user_profiles")
@@ -37,6 +43,27 @@ async function createTestUser(kind) {
 
 async function cleanup() {
   for (const jobId of ids.jobs) {
+    const { data: paymentIntents } = await admin.from("payment_intents").select("id").eq("job_id", jobId);
+    const paymentIntentIds = paymentIntents?.map((item) => item.id) ?? [];
+    if (paymentIntentIds.length) {
+      const { data: payoutRows } = await admin.from("professional_payouts").select("id").in(
+        "professional_id",
+        ids.profiles.length ? ids.profiles : [randomUUID()],
+      );
+      const payoutIds = payoutRows?.map((item) => item.id) ?? [];
+      await admin.from("ledger_entries").delete().in("payment_intent_id", paymentIntentIds);
+      if (payoutIds.length) {
+        await admin.from("ledger_entries").delete().in("payout_id", payoutIds);
+        await admin.from("payout_earning_items").delete().in("payout_id", payoutIds);
+        await admin.from("professional_payouts").delete().in("id", payoutIds);
+      }
+      await admin.from("transaction_documents").delete().in("payment_intent_id", paymentIntentIds);
+      await admin.from("payment_reconciliation_cases").delete().in("payment_intent_id", paymentIntentIds);
+      await admin.from("refunds").delete().in("payment_intent_id", paymentIntentIds);
+      await admin.from("professional_earnings").delete().in("payment_intent_id", paymentIntentIds);
+      await admin.from("payment_transactions").delete().in("payment_intent_id", paymentIntentIds);
+      await admin.from("payment_intents").delete().in("id", paymentIntentIds);
+    }
     const [{ data: quotations }, { data: messages }] = await Promise.all([
       admin.from("job_quotations").select("id").eq("job_id", jobId),
       admin.from("job_messages").select("id").eq("job_id", jobId),
@@ -79,9 +106,12 @@ async function cleanup() {
     await admin.from("audit_logs").delete().eq("entity_id", offerId);
   }
   for (const profileId of ids.profiles) {
+    await admin.from("transaction_documents").delete().eq("issued_to_user_id", profileId);
     await admin.from("notifications").delete().eq("user_profile_id", profileId);
     await admin.from("audit_logs").delete().eq("actor_user_profile_id", profileId);
   }
+  if (ids.webhookEvents.length) await admin.from("payment_webhook_events").delete().in("id", ids.webhookEvents);
+  await admin.from("ledger_accounts").delete().in("owner_profile_id", ids.profiles.length ? ids.profiles : [randomUUID()]);
   for (const propertyId of ids.properties) await admin.from("properties").delete().eq("id", propertyId);
   for (const authUserId of ids.authUsers) {
     let deletion = await admin.auth.admin.deleteUser(authUserId);
@@ -142,6 +172,13 @@ try {
       status: "verified",
       verified_at: new Date().toISOString(),
     }))),
+    admin.from("professional_payout_profiles").upsert({
+      professional_profile_id: professionalId,
+      payout_method: "bank",
+      account_title: "Integration Repairs",
+      account_reference_encrypted: "integration-test-encrypted-reference",
+      is_verified: true,
+    }),
   ]);
   const setupError = setupResults.find((result) => result.error)?.error;
   if (setupError) throw setupError;
@@ -615,6 +652,158 @@ try {
   if (completionConfirmError || !confirmedCompletion) throw completionConfirmError ?? new Error("Completion confirmation failed.");
   assert.equal(confirmedCompletion.customer_decision, "confirmed");
 
+  const paymentKey = `integration-payment:${randomUUID()}`;
+  const paymentHash = hash({ jobId: job.id, provider: "manual", methodType: "manual_bank_transfer", paymentMethodId: null });
+  const paymentArgs = {
+    p_actor_profile_id: customerId,
+    p_job_id: job.id,
+    p_provider: "manual",
+    p_method_type: "manual_bank_transfer",
+    p_payment_method_id: null,
+    p_idempotency_key: paymentKey,
+    p_request_hash: paymentHash,
+  };
+  const { data: payment, error: paymentError } = await admin.rpc("create_job_payment_intent", paymentArgs);
+  if (paymentError || !payment) throw paymentError ?? new Error("Payment intent creation failed.");
+  assert.equal(payment.amount_minor, 78_000);
+  assert.equal(payment.platform_fee_minor, 0);
+  assert.equal(payment.status, "cash_due");
+  const { data: paymentReplay, error: paymentReplayError } = await admin.rpc("create_job_payment_intent", paymentArgs);
+  if (paymentReplayError || !paymentReplay) throw paymentReplayError ?? new Error("Payment intent replay failed.");
+  assert.equal(paymentReplay.id, payment.id);
+
+  const { data: reportedPayment, error: reportPaymentError } = await admin.rpc("report_manual_payment", {
+    p_actor_profile_id: professionalId,
+    p_payment_intent_id: payment.id,
+    p_note: "Integration manual transfer reported for customer verification.",
+  });
+  if (reportPaymentError || !reportedPayment) throw reportPaymentError ?? new Error("Manual payment report failed.");
+  assert.equal(reportedPayment.status, "cash_reported");
+  const { data: disagreement, error: disagreementError } = await admin.rpc("open_payment_disagreement", {
+    p_actor_profile_id: customerId,
+    p_payment_intent_id: payment.id,
+    p_reason: "Integration test checks the documented disagreement and reconciliation path.",
+  });
+  if (disagreementError || !disagreement) throw disagreementError ?? new Error("Payment disagreement failed.");
+  const { data: reconciled, error: reconciliationError } = await admin.rpc("reconcile_manual_payment", {
+    p_actor_profile_id: professionalId,
+    p_actor_role: "support",
+    p_case_id: disagreement.id,
+    p_resolution: "Integration review rejected the first receipt report so the professional can report again.",
+    p_confirmed: false,
+    p_evidence_reference: "integration-reconciliation-001",
+  });
+  if (reconciliationError || !reconciled) throw reconciliationError ?? new Error("Payment reconciliation failed.");
+  assert.equal(reconciled.status, "resolved");
+  const { data: rereportedPayment, error: rereportError } = await admin.rpc("report_manual_payment", {
+    p_actor_profile_id: professionalId,
+    p_payment_intent_id: payment.id,
+    p_note: "Integration manual transfer reported again after staff review.",
+  });
+  if (rereportError || !rereportedPayment) throw rereportError ?? new Error("Manual payment re-report failed.");
+
+  const confirmPaymentKey = `integration-payment-confirm:${randomUUID()}`;
+  const confirmPaymentArgs = {
+    p_actor_profile_id: customerId,
+    p_payment_intent_id: payment.id,
+    p_idempotency_key: confirmPaymentKey,
+    p_request_hash: hash({ paymentId: payment.id }),
+  };
+  const { data: confirmedPayment, error: paymentConfirmError } = await admin.rpc("confirm_manual_payment", confirmPaymentArgs);
+  if (paymentConfirmError || !confirmedPayment) throw paymentConfirmError ?? new Error("Manual payment confirmation failed.");
+  assert.equal(confirmedPayment.status, "cash_confirmed");
+  const { data: confirmedPaymentReplay, error: paymentConfirmReplayError } = await admin.rpc("confirm_manual_payment", confirmPaymentArgs);
+  if (paymentConfirmReplayError || !confirmedPaymentReplay) throw paymentConfirmReplayError ?? new Error("Payment confirmation replay failed.");
+  assert.equal(confirmedPaymentReplay.id, payment.id);
+
+  const [{ data: journalRows }, { data: earning }, { data: receipt }] = await Promise.all([
+    admin.from("ledger_entries").select("journal_id,direction,amount_minor").eq("payment_intent_id", payment.id),
+    admin.from("professional_earnings").select("*").eq("payment_intent_id", payment.id).single(),
+    admin.from("transaction_documents").select("*").eq("payment_intent_id", payment.id).eq("document_type", "customer_receipt").single(),
+  ]);
+  assert.ok(journalRows?.length);
+  const debitTotal = journalRows.filter((row) => row.direction === "debit").reduce((sum, row) => sum + Number(row.amount_minor), 0);
+  const creditTotal = journalRows.filter((row) => row.direction === "credit").reduce((sum, row) => sum + Number(row.amount_minor), 0);
+  assert.equal(debitTotal, creditTotal);
+  assert.equal(earning?.status, "available");
+  assert.equal(earning?.net_amount_minor, 78_000);
+  assert.match(receipt?.wording ?? "", /not a tax invoice/i);
+
+  const payoutKey = `integration-payout:${randomUUID()}`;
+  const payoutArgs = {
+    p_actor_profile_id: customerId,
+    p_actor_role: "admin",
+    p_professional_id: professionalId,
+    p_earning_ids: [earning.id],
+    p_idempotency_key: payoutKey,
+    p_request_hash: hash({ professionalId, earningIds: [earning.id] }),
+  };
+  const { data: payout, error: payoutError } = await admin.rpc("create_professional_payout", payoutArgs);
+  if (payoutError || !payout) throw payoutError ?? new Error("Payout draft failed.");
+  const { error: makerCheckerError } = await admin.rpc("approve_professional_payout", {
+    p_actor_profile_id: customerId, p_actor_role: "admin", p_payout_id: payout.id,
+  });
+  assert.match(makerCheckerError?.message ?? "", /PAYOUT_MAKER_CHECKER_REQUIRED/);
+  const { data: approvedPayout, error: payoutApprovalError } = await admin.rpc("approve_professional_payout", {
+    p_actor_profile_id: professionalId, p_actor_role: "admin", p_payout_id: payout.id,
+  });
+  if (payoutApprovalError || !approvedPayout) throw payoutApprovalError ?? new Error("Payout approval failed.");
+  const { data: paidPayout, error: payoutPaidError } = await admin.rpc("record_professional_payout_paid", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "admin",
+    p_payout_id: payout.id,
+    p_provider_reference: `integration-transfer-${randomUUID()}`,
+    p_evidence_storage_path: `payouts/${payout.id}/integration-evidence.pdf`,
+  });
+  if (payoutPaidError || !paidPayout) throw payoutPaidError ?? new Error("Payout settlement failed.");
+  assert.equal(paidPayout.status, "paid");
+
+  const refundKey = `integration-refund:${randomUUID()}`;
+  const refundArgs = {
+    p_actor_profile_id: customerId,
+    p_payment_intent_id: payment.id,
+    p_amount_minor: 8_000,
+    p_reason: "Integration partial refund validates accounting reversals and receipt generation.",
+    p_idempotency_key: refundKey,
+    p_request_hash: hash({ paymentId: payment.id, amountMinor: 8_000, reason: "Integration partial refund validates accounting reversals and receipt generation." }),
+  };
+  const { data: refund, error: refundError } = await admin.rpc("request_payment_refund", refundArgs);
+  if (refundError || !refund) throw refundError ?? new Error("Refund request failed.");
+  const { data: refundReplay, error: refundReplayError } = await admin.rpc("request_payment_refund", refundArgs);
+  if (refundReplayError || !refundReplay) throw refundReplayError ?? new Error("Refund replay failed.");
+  assert.equal(refundReplay.id, refund.id);
+  const { data: approvedRefund, error: refundDecisionError } = await admin.rpc("decide_payment_refund", {
+    p_actor_profile_id: professionalId,
+    p_actor_role: "admin",
+    p_refund_id: refund.id,
+    p_approved: true,
+    p_reason: "Integration approval after evidence review.",
+  });
+  if (refundDecisionError || !approvedRefund) throw refundDecisionError ?? new Error("Refund approval failed.");
+  const { data: completedRefund, error: refundCompletionError } = await admin.rpc("complete_manual_refund", {
+    p_actor_profile_id: customerId,
+    p_actor_role: "admin",
+    p_refund_id: refund.id,
+    p_provider_reference: `integration-refund-transfer-${randomUUID()}`,
+  });
+  if (refundCompletionError || !completedRefund) throw refundCompletionError ?? new Error("Refund completion failed.");
+  assert.equal(completedRefund.status, "completed");
+
+  const webhookEventId = `integration-event-${randomUUID()}`;
+  const webhookHash = hash({ event: webhookEventId });
+  const { data: webhookEvent, error: webhookError } = await admin.rpc("record_payment_webhook_event", {
+    p_provider: "integration_adapter", p_provider_event_id: webhookEventId,
+    p_signature_verified: true, p_event_type: "payment.test", p_payload_hash: webhookHash,
+  });
+  if (webhookError || !webhookEvent) throw webhookError ?? new Error("Webhook recording failed.");
+  ids.webhookEvents.push(webhookEvent.id);
+  const { data: webhookReplay, error: webhookReplayError } = await admin.rpc("record_payment_webhook_event", {
+    p_provider: "integration_adapter", p_provider_event_id: webhookEventId,
+    p_signature_verified: true, p_event_type: "payment.test", p_payload_hash: webhookHash,
+  });
+  if (webhookReplayError || !webhookReplay) throw webhookReplayError ?? new Error("Webhook replay failed.");
+  assert.equal(webhookReplay.id, webhookEvent.id);
+
   const [{ count: snapshotCount }, { count: bookingCount }, { count: candidateCount }] = await Promise.all([
     admin.from("accepted_offer_snapshots").select("id", { count: "exact", head: true }).eq("request_id", draft.id),
     admin.from("bookings").select("id", { count: "exact", head: true }).eq("request_id", draft.id),
@@ -623,7 +812,7 @@ try {
   assert.equal(snapshotCount, 1);
   assert.equal(bookingCount, 1);
   assert.equal(candidateCount, 1);
-  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 en_route=1 arrival=verified inspection=1 quotation_versions=2 quotation_approved=1 work_started=1 chat_read=1 change_order_approved=1 completion_issue=1 completion_confirmed=1 safety_guards=2");
+  console.log("phase2-marketplace-integration=passed match=1 invite=1 offer=1 accept=1 reschedule=1 confirm=1 en_route=1 arrival=verified inspection=1 quotation_versions=2 quotation_approved=1 work_started=1 chat_read=1 change_order_approved=1 completion_issue=1 completion_confirmed=1 payment_confirmed=1 reconciliation=1 ledger_balanced=1 payout_paid=1 maker_checker=1 refund_completed=1 webhook_idempotent=1 safety_guards=2");
 } finally {
   await cleanup();
 }

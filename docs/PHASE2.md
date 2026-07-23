@@ -101,6 +101,23 @@ Checkpoint 5 adds:
 
 The integration path now continues through inspection, a requested quotation revision, immutable version two approval, work start, chat/read state, a change order that pauses work, approval and resume, final evidence, an issue-reported completion, resubmission, and customer confirmation. Cleanup verifies the isolated records and users are absent.
 
+## Payments, fees, and payout accounting
+
+Checkpoint 6 adds:
+
+- provider-neutral payment adapters with no unverified online provider enabled
+- production-safe cash and manual-transfer intents, professional receipt reports, explicit customer confirmation, and documented staff reconciliation for disagreements
+- configurable effective-dated percentage/fixed commission rules with optional category, city, minimum, and maximum scope; an absent rule means a zero fee
+- payment transactions and idempotent command replay that prevent duplicate posting
+- append-only double-entry journal lines, professional earnings, direct-cash settlement handling, and controlled payable balances
+- maker-checker manual payouts requiring a verified Phase 1 payout profile, independent approval, a transfer reference, and private evidence
+- accurately worded payment, refund, earnings, and payout documents that do not claim tax-invoice status
+- partial/full refund limits, approval, evidence, proportional fee/earnings reversal, and retained accounting history
+- signature-gated adapter webhooks with provider/event uniqueness and payload-hash conflict detection
+- customer, professional, support, and admin financial screens backed by the shared APIs
+
+The integration path now continues after completion through idempotent payment creation, a reported disagreement, staff reconciliation, customer confirmation, balanced journal verification, available earnings, maker-checker payout and evidence, partial refund accounting, webhook replay, and verified cleanup. Live online collection or payout is intentionally not claimed: no provider is enabled until credentials, signature verification, sandbox tests, account/legal approval, and authorized production tests exist.
+
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
 
 ## Mobile readiness

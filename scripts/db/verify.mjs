@@ -45,6 +45,10 @@ const expectedTables = [
   "job_inspections", "job_quotations", "job_quotation_items", "quotation_decisions",
   "job_media", "job_material_items", "job_change_orders", "job_messages",
   "job_message_attachments", "job_message_reads", "job_completions",
+  "customer_payment_methods", "fee_rules", "payment_intents", "payment_transactions",
+  "payment_webhook_events", "ledger_accounts", "ledger_entries", "professional_earnings",
+  "professional_payouts", "payout_earning_items", "transaction_documents", "refunds",
+  "payment_reconciliation_cases",
 ];
 
 try {
@@ -65,7 +69,7 @@ try {
       (select count(*)::int from public.service_categories) as categories,
       (select count(*)::int from public.service_subcategories) as subcategories,
       (select count(*)::int from public.cities) as cities,
-      (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies','service-request-media','job-evidence')) as buckets,
+      (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies','service-request-media','job-evidence','financial-evidence')) as buckets,
       (select count(*)::int from public.system_settings where key like 'phase2.%' and value = 'false'::jsonb) as disabled_phase2_flags,
       (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
         'create_service_request_draft','update_service_request_draft','submit_service_request','cancel_service_request'
@@ -89,10 +93,18 @@ try {
         'start_job_work','pause_job_work','resume_job_work',
         'submit_job_completion','decide_job_completion'
       )) as execution_commands,
+      (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
+        'calculate_marketplace_fee','ensure_ledger_account','create_job_payment_intent',
+        'report_manual_payment','post_confirmed_manual_payment','confirm_manual_payment',
+        'open_payment_disagreement','reconcile_manual_payment','request_payment_refund',
+        'decide_payment_refund','complete_manual_refund','create_professional_payout',
+        'approve_professional_payout','record_professional_payout_paid','record_payment_webhook_event',
+        'create_fee_rule','set_fee_rule_active'
+      )) as payment_commands,
       (select count(*)::int from pg_policies where schemaname = 'public') as policies
   `;
 
-  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 5 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.execution_commands !== 17 || counts.policies < 60) {
+  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 6 || counts.disabled_phase2_flags !== 5 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.execution_commands !== 17 || counts.payment_commands !== 17 || counts.policies < 70) {
     throw new Error("Seed or policy verification failed.");
   }
 
@@ -102,6 +114,7 @@ try {
   console.log(`verified matching_offer_commands=${counts.matching_commands}`);
   console.log(`verified booking_arrival_commands=${counts.booking_commands}`);
   console.log(`verified job_execution_commands=${counts.execution_commands}`);
+  console.log(`verified payment_accounting_commands=${counts.payment_commands}`);
 } finally {
   await sql.end({ timeout: 5 });
 }

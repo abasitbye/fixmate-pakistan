@@ -77,7 +77,7 @@ export function DashboardShell({
   displayName: string | null;
   roles: string[];
   section?: "customer" | "professional" | "admin" | "support";
-  marketplaceNavigation?: { requests: boolean; matching: boolean; jobs: boolean };
+  marketplaceNavigation?: { requests: boolean; matching: boolean; jobs: boolean; payments: boolean };
 }) {
   let navigationLinks = [...sectionLinks[section]] as Array<{ href: string; label: string; icon: typeof LayoutDashboard }>;
   if (section === "customer") {
@@ -86,6 +86,10 @@ export function DashboardShell({
       ...(marketplaceNavigation?.jobs ? [
         { href: "/customer/bookings", label: "Bookings", icon: CalendarCheck2 },
         { href: "/customer/jobs", label: "Jobs", icon: Wrench },
+      ] : []),
+      ...(marketplaceNavigation?.payments ? [
+        { href: "/customer/payments", label: "Payments", icon: BadgeDollarSign },
+        { href: "/customer/receipts", label: "Receipts", icon: ScrollText },
       ] : []),
     ];
     navigationLinks = [navigationLinks[0], ...marketplaceLinks, ...navigationLinks.slice(1)];
@@ -100,6 +104,10 @@ export function DashboardShell({
         { href: "/professional/bookings", label: "Bookings", icon: CalendarCheck2 },
         { href: "/professional/jobs", label: "Jobs", icon: Wrench },
       ] : []),
+      ...(marketplaceNavigation?.payments ? [
+        { href: "/professional/earnings", label: "Earnings", icon: BadgeDollarSign },
+        { href: "/professional/payouts", label: "Payouts", icon: ScrollText },
+      ] : []),
     ];
     navigationLinks = [navigationLinks[0], ...marketplaceLinks, ...navigationLinks.slice(1)];
   }
@@ -107,6 +115,20 @@ export function DashboardShell({
     navigationLinks = [
       navigationLinks[0],
       { href: "/support/bookings", label: "Bookings", icon: CalendarCheck2 },
+      ...navigationLinks.slice(1),
+    ];
+  }
+  if (section === "support" && marketplaceNavigation?.payments) {
+    navigationLinks.splice(2, 0, { href: "/support/payments", label: "Payments", icon: BadgeDollarSign });
+  }
+  if (section === "admin" && marketplaceNavigation?.payments) {
+    navigationLinks = [
+      navigationLinks[0],
+      { href: "/admin/payments", label: "Payments", icon: BadgeDollarSign },
+      { href: "/admin/reconciliation", label: "Reconciliation", icon: ClipboardList },
+      { href: "/admin/refunds", label: "Refunds", icon: ScrollText },
+      { href: "/admin/fees", label: "Fee rules", icon: Settings },
+      { href: "/admin/payouts", label: "Payouts", icon: ScrollText },
       ...navigationLinks.slice(1),
     ];
   }
