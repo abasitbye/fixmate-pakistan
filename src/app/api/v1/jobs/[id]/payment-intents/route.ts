@@ -4,6 +4,7 @@ import { paymentCommandError } from "@/lib/marketplace/payments/api";
 import { getPaymentContext } from "@/lib/marketplace/payments/route-utils";
 import { createPaymentIntentSchema } from "@/lib/marketplace/payments/schemas";
 import { createPaymentIntent } from "@/lib/marketplace/payments/service";
+import { enforceMarketplaceRateLimit } from "@/lib/marketplace/rate-limit";
 
 export async function POST(
   request: Request,
@@ -11,6 +12,13 @@ export async function POST(
 ) {
   const auth = await getPaymentContext("Sign in to create a payment.");
   if (!auth.context) return auth.response;
+  const limited = await enforceMarketplaceRateLimit({
+    profileId: auth.context.profile.id,
+    scope: "marketplace.payment.create",
+    limit: 10,
+    windowSeconds: 3600,
+  });
+  if (limited) return limited;
   const parsed = createPaymentIntentSchema.safeParse(
     await request.json().catch(() => null),
   );

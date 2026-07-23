@@ -3,12 +3,20 @@ import { getResolutionContext } from "@/lib/marketplace/resolution/route-utils";
 import { claimSchema } from "@/lib/marketplace/resolution/schemas";
 import { createClaim } from "@/lib/marketplace/resolution/service";
 import { resolutionCommandError } from "@/lib/marketplace/resolution/api";
+import { enforceMarketplaceRateLimit } from "@/lib/marketplace/rate-limit";
 export async function POST(
   r: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const a = await getResolutionContext();
   if (!a.context) return a.response;
+  const limited = await enforceMarketplaceRateLimit({
+    profileId: a.context.profile.id,
+    scope: "marketplace.warranty.claim",
+    limit: 6,
+    windowSeconds: 3600,
+  });
+  if (limited) return limited;
   const p = claimSchema.safeParse(await r.json().catch(() => null));
   if (!p.success)
     return apiError(400, "INVALID_CLAIM", "Describe the warranty problem.");

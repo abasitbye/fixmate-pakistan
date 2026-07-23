@@ -4,7 +4,7 @@ Phase 2 extends the production Phase 1 identity, verification, location, notific
 
 ## Release strategy
 
-Marketplace capabilities are delivered through eight production checkpoints. Incomplete user workflows remain unavailable until their database-backed feature flag is enabled by a super administrator.
+Marketplace capabilities were delivered through eight production checkpoints. Database-backed flags remain the operational kill switches for safe rollback and incident response.
 
 | Flag | Initial value | Purpose |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ Marketplace capabilities are delivered through eight production checkpoints. Inc
 | `phase2.matching_enabled` | `false` | Matching and professional offers |
 | `phase2.jobs_enabled` | `false` | Booking and job execution |
 | `phase2.payments_enabled` | `false` | Payments and accounting |
+| `phase2.resolution_enabled` | `false` | Reviews, warranties, claims and disputes |
 
 The master flag and the capability flag must both be enabled. Flags are stored in `system_settings`, changed through the audited super-administrator settings API, and exposed publicly only as booleans.
 
@@ -135,6 +136,22 @@ Checkpoint 7 adds:
 The integration lifecycle verifies warranty issuance, claim response/revisit/resolution, mutual review submission, moderation and aggregate recalculation, a balanced dispute hold/release, evidence, messaging, resolution, closure, reopening, and safe continuation into payout and refund accounting.
 
 All new user or sensitive tables have RLS. Direct browser mutation of controlled transactional records is denied; versioned APIs apply ownership, role, validation, transition, idempotency, audit, and transaction checks.
+
+## Operations, security and final hardening
+
+Checkpoint 8 adds:
+
+- staff operational dashboards for active requests/jobs, disputes, payouts, background failures and recent safe references
+- explainable fraud/abuse signals for repeated cancellations, no-shows and payment disagreements, with human review, audit notes and appeal states
+- database-backed rate limits across abuse-sensitive marketplace and staff actions
+- a daily bearer-protected Vercel Cron route backed by a PostgreSQL advisory lock
+- safe expiry for requests, invitations, offers, arrival codes and warranties
+- dead-letter monitoring, operational alerts, background-run history and documented data retention
+- separate liveness and dependency/queue readiness checks
+- localized dashboard navigation plus updated English, Urdu and Roman Urdu marketplace privacy/terms content
+- production runbooks, state diagrams, a data model, a permission matrix and explicit Phase 3 deferrals
+
+The final feature-activation migration is applied only after local quality, database, integration, production deployment and unauthorized-access checks are green. Flags remain available for an audited emergency shutdown.
 
 ## Mobile readiness
 

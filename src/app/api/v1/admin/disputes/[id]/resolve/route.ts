@@ -3,6 +3,7 @@ import { getResolutionContext } from "@/lib/marketplace/resolution/route-utils";
 import { disputeResolutionSchema } from "@/lib/marketplace/resolution/schemas";
 import { resolveDispute } from "@/lib/marketplace/resolution/service";
 import { resolutionCommandError } from "@/lib/marketplace/resolution/api";
+import { enforceMarketplaceRateLimit } from "@/lib/marketplace/rate-limit";
 export async function POST(
   r: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -11,6 +12,13 @@ export async function POST(
   if (!a.context) return a.response;
   if (!a.context.roles.some((x) => ["admin", "super_admin"].includes(x)))
     return apiError(403, "FORBIDDEN", "Administrator access is required.");
+  const limited = await enforceMarketplaceRateLimit({
+    profileId: a.context.profile.id,
+    scope: "marketplace.admin.dispute-resolution",
+    limit: 20,
+    windowSeconds: 3600,
+  });
+  if (limited) return limited;
   const p = disputeResolutionSchema.safeParse(await r.json().catch(() => null));
   if (!p.success)
     return apiError(

@@ -5,6 +5,7 @@ import { useCallback, useState } from "react";
 
 import { TurnstileWidget } from "@/components/security/turnstile-widget";
 import { useRouter } from "@/i18n/navigation";
+import { Link } from "@/i18n/navigation";
 import type { ApiEnvelope } from "@/lib/api/response";
 
 export function RequestActions({ requestId, version, status }: { requestId: string; version: number; status: string }) {
@@ -12,6 +13,7 @@ export function RequestActions({ requestId, version, status }: { requestId: stri
   const [token, setToken] = useState("");
   const [pending, setPending] = useState<"submit" | "cancel" | "">("");
   const [error, setError] = useState("");
+  const [accepted, setAccepted] = useState(false);
   const handleToken = useCallback((value: string) => setToken(value), []);
 
   async function submit() {
@@ -23,7 +25,11 @@ export function RequestActions({ requestId, version, status }: { requestId: stri
         "content-type": "application/json",
         "idempotency-key": `request-submit:${crypto.randomUUID()}`,
       },
-      body: JSON.stringify({ version, turnstileToken: token }),
+      body: JSON.stringify({
+        version,
+        turnstileToken: token,
+        acceptMarketplaceTerms: accepted,
+      }),
     });
     const result = await response.json() as ApiEnvelope<{ request: unknown }>;
     setPending("");
@@ -62,9 +68,21 @@ export function RequestActions({ requestId, version, status }: { requestId: stri
       <h2>Request actions</h2>
       {status === "draft" ? <>
         <p>Review the details and complete the security check before submission.</p>
+        <label className="consent-check">
+          <input
+            type="checkbox"
+            checked={accepted}
+            onChange={(event) => setAccepted(event.target.checked)}
+            required
+          />
+          <span>
+            I accept the current <Link href="/terms">Marketplace Terms</Link> and{" "}
+            <Link href="/privacy">Privacy Notice</Link> for this request.
+          </span>
+        </label>
         <TurnstileWidget action="service_request_submit" onToken={handleToken} />
         <div className="inline-actions">
-          <button className="button button--primary" onClick={submit} disabled={!token || Boolean(pending)}>
+          <button className="button button--primary" onClick={submit} disabled={!token || !accepted || Boolean(pending)}>
             {pending === "submit" ? <LoaderCircle className="spin" size={17} /> : <Send size={17} />} Submit request
           </button>
         </div>

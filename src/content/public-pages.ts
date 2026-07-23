@@ -73,6 +73,222 @@ const roman: Record<PublicPageKey, Copy> = {
   professional:{kicker:"Skilled professionals ke liye",title:"Trusted digital reputation banayein",lead:"Guided workflow mein services aur verification details submit karein.",sections:[{title:"Kya dena hoga",body:"Personal info, services, areas, availability, identity documents aur do references."},{title:"Review kaise hoga",body:"Application ke har status ki controlled tabdeeli hogi."},{title:"Phase 1 boundary",body:"Approval jobs ya income ki guarantee nahin; matching aur payout baad mein ayenge."}]},
 };
 
+en.privacy = {
+  kicker: "Privacy notice · version 2.0",
+  title: "Your marketplace information is handled with purpose",
+  lead:
+    "This notice covers FixMate accounts, professional matching, service transactions and the records needed to keep the marketplace safe and accountable.",
+  sections: [
+    {
+      title: "Service, address and communication data",
+      body:
+        "We use request details, approved media, approximate matching areas, booking addresses, job communication and consented en-route location to provide the service. Exact addresses are released only after the appropriate booking step, and short-lived location points are deleted on a minimized schedule.",
+    },
+    {
+      title: "Payments, reviews, warranties and disputes",
+      body:
+        "We retain provider-neutral payment metadata, receipts, approved reviews, warranty records and protected dispute evidence. FixMate does not store raw card, wallet PIN or online-banking credentials.",
+    },
+    {
+      title: "Retention and account deletion",
+      body:
+        "Optional profile data can be removed or anonymized through a controlled request. Accounting, fraud-prevention, active warranty, active dispute, audit and legal records may be preserved for the documented retention period.",
+    },
+  ],
+};
+
+en.terms = {
+  kicker: "Platform terms · version 2.0",
+  title: "Marketplace Terms of Service",
+  lead:
+    "These terms cover service requests, matching, bookings, approved work, payments, reviews, warranties and dispute support on FixMate Pakistan.",
+  sections: [
+    {
+      title: "Requests, matching and approved scope",
+      body:
+        "Users must provide accurate information. Professional selection is not based on price alone, and chargeable work or changes require the customer’s recorded approval. Exact customer details remain restricted until the appropriate booking stage.",
+    },
+    {
+      title: "Payments and platform records",
+      body:
+        "Cash and manual-payment records describe the agreed transaction; an online provider is available only when separately configured. Fees, refunds and professional earnings follow the effective rules and auditable ledger entries shown by the platform.",
+    },
+    {
+      title: "Reviews, warranty and dispute support",
+      body:
+        "Reviews must reflect eligible completed jobs. Warranty coverage comes from the accepted quotation and its exclusions. FixMate may hold disputed earnings, review evidence and apply documented account consequences with a human review and appeal path.",
+    },
+  ],
+};
+
+ur.privacy = {
+  kicker: "رازداری کا نوٹس · ورژن 2.0",
+  title: "مارکیٹ پلیس کی معلومات واضح مقصد کے ساتھ استعمال ہوتی ہیں",
+  lead:
+    "یہ نوٹس فکس میٹ اکاؤنٹس، پیشہ ورانہ میچنگ، سروس لین دین اور محفوظ مارکیٹ پلیس کے ضروری ریکارڈ پر لاگو ہوتا ہے۔",
+  sections: [
+    {
+      title: "سروس، پتہ اور رابطے کا ڈیٹا",
+      body:
+        "درخواست، منظور شدہ میڈیا، اندازاً علاقہ، بکنگ کا پتہ، جاب گفتگو اور رضامندی سے شیئر کیا گیا مختصر لوکیشن ڈیٹا سروس کے لیے استعمال ہوتا ہے۔ مکمل پتہ مناسب بکنگ مرحلے کے بعد دیا جاتا ہے۔",
+    },
+    {
+      title: "ادائیگی، جائزے، وارنٹی اور تنازعات",
+      body:
+        "ادائیگی کا محدود میٹا ڈیٹا، رسیدیں، منظور شدہ جائزے، وارنٹی ریکارڈ اور محفوظ تنازعہ ثبوت رکھے جاتے ہیں۔ کارڈ، والٹ پن یا آن لائن بینکنگ کی خفیہ معلومات محفوظ نہیں کی جاتیں۔",
+    },
+    {
+      title: "مدت اور اکاؤنٹ حذف کرنا",
+      body:
+        "اختیاری پروفائل ڈیٹا باقاعدہ درخواست پر حذف یا گمنام کیا جا سکتا ہے۔ مالی، فراڈ روک تھام، فعال وارنٹی، فعال تنازعہ، آڈٹ اور قانونی ریکارڈ مقررہ مدت تک محفوظ رہ سکتے ہیں۔",
+    },
+  ],
+};
+
+ur.terms = {
+  kicker: "پلیٹ فارم شرائط · ورژن 2.0",
+  title: "مارکیٹ پلیس کی سروس شرائط",
+  lead:
+    "یہ شرائط فکس میٹ پاکستان پر سروس درخواست، میچنگ، بکنگ، منظور شدہ کام، ادائیگی، جائزے، وارنٹی اور تنازعہ سپورٹ پر لاگو ہوتی ہیں۔",
+  sections: [
+    {
+      title: "درخواست، میچنگ اور منظور شدہ کام",
+      body:
+        "درست معلومات دینا ضروری ہے۔ پیشہ ور کا انتخاب صرف قیمت پر نہیں، اور قابلِ ادائیگی کام یا تبدیلی کے لیے کسٹمر کی درج شدہ منظوری ضروری ہے۔",
+    },
+    {
+      title: "ادائیگی اور پلیٹ فارم ریکارڈ",
+      body:
+        "نقد اور دستی ادائیگی کا ریکارڈ متفقہ لین دین کو ظاہر کرتا ہے۔ آن لائن ادائیگی صرف الگ سے فراہم کنندہ ترتیب ہونے پر دستیاب ہوگی۔",
+    },
+    {
+      title: "جائزے، وارنٹی اور تنازعہ",
+      body:
+        "جائزہ صرف اہل مکمل جاب کے لیے ہے۔ وارنٹی منظور شدہ کوٹیشن اور اس کی حدود کے مطابق ہے۔ تنازعہ میں ثبوت، انسانی جائزہ اور اپیل کا راستہ موجود ہے۔",
+    },
+  ],
+};
+
+roman.privacy = {
+  kicker: "Privacy notice · version 2.0",
+  title: "Marketplace maloomat wazeh maqsad ke saath use hoti hai",
+  lead:
+    "Yeh notice accounts, professional matching, service transactions aur marketplace safety records par lagu hai.",
+  sections: [
+    {
+      title: "Service, address aur communication data",
+      body:
+        "Request details, approved media, andazay ka area, booking address, job chat aur razamandi wala short-lived location data service ke liye use hota hai. Exact address sahi booking stage ke baad milta hai.",
+    },
+    {
+      title: "Payments, reviews, warranty aur disputes",
+      body:
+        "Limited payment metadata, receipts, approved reviews, warranty records aur protected dispute evidence rakha jata hai. Raw card, wallet PIN ya online-banking credentials store nahin hotay.",
+    },
+    {
+      title: "Retention aur account deletion",
+      body:
+        "Optional profile data controlled request par delete ya anonymize ho sakta hai. Accounting, fraud prevention, active warranty, dispute, audit aur legal records documented muddat tak reh sakte hain.",
+    },
+  ],
+};
+
+roman.terms = {
+  kicker: "Platform terms · version 2.0",
+  title: "Marketplace service ki sharaait",
+  lead:
+    "Yeh sharaait service requests, matching, booking, approved work, payments, reviews, warranty aur dispute support par lagu hain.",
+  sections: [
+    {
+      title: "Request, matching aur approved scope",
+      body:
+        "Sahi maloomat dena zaroori hai. Professional sirf price par select nahin hota aur paid kaam ya tabdeeli ke liye customer ki recorded approval chahiye.",
+    },
+    {
+      title: "Payments aur platform records",
+      body:
+        "Cash aur manual payment record agreed transaction dikhata hai. Online provider sirf alag configuration ke baad available hoga.",
+    },
+    {
+      title: "Reviews, warranty aur disputes",
+      body:
+        "Review sirf eligible completed job par hota hai. Warranty accepted quotation ki coverage aur exclusions ke mutabiq hai. Dispute mein evidence, human review aur appeal ka raasta hota hai.",
+    },
+  ],
+};
+
+en.faq = {
+  kicker: "Straight answers",
+  title: "Frequently asked questions",
+  lead:
+    "FixMate’s operational marketplace connects customers with approved professionals in configured service areas.",
+  sections: [
+    {
+      title: "How do I request a repair?",
+      body:
+        "Sign in, select a saved property, describe the problem and submit the request. FixMate shares only safe request details while suitable professionals are matched.",
+    },
+    {
+      title: "When does a price become final?",
+      body:
+        "Offers may be fixed, estimated or inspection-based. Chargeable work follows the customer-approved quotation and any later approved change order.",
+    },
+    {
+      title: "What happens if something goes wrong?",
+      body:
+        "The job record supports completion issues, payment review, warranty claims and evidence-based disputes. Account consequences require authorized human review.",
+    },
+  ],
+};
+
+ur.faq = {
+  kicker: "واضح جوابات",
+  title: "اکثر پوچھے گئے سوالات",
+  lead:
+    "فکس میٹ کا عملی مارکیٹ پلیس کسٹمرز کو فعال علاقوں میں منظور شدہ پیشہ وروں سے ملاتا ہے۔",
+  sections: [
+    {
+      title: "مرمت کی درخواست کیسے دوں؟",
+      body:
+        "سائن اِن کریں، محفوظ جائیداد منتخب کریں، مسئلہ بیان کریں اور درخواست جمع کریں۔ میچنگ کے دوران صرف ضروری محفوظ معلومات دکھائی جاتی ہیں۔",
+    },
+    {
+      title: "قیمت کب حتمی ہوتی ہے؟",
+      body:
+        "آفر مقررہ، اندازاً یا معائنے پر مبنی ہو سکتی ہے۔ قابلِ ادائیگی کام منظور شدہ کوٹیشن اور بعد کی منظور شدہ تبدیلی کے مطابق ہوتا ہے۔",
+    },
+    {
+      title: "مسئلہ ہو تو کیا ہوگا؟",
+      body:
+        "جاب ریکارڈ تکمیل کے مسئلے، ادائیگی کے جائزے، وارنٹی کلیم اور ثبوت پر مبنی تنازعہ کو سپورٹ کرتا ہے۔",
+    },
+  ],
+};
+
+roman.faq = {
+  kicker: "Seedhe jawab",
+  title: "Aksar poochay gaye sawalat",
+  lead:
+    "FixMate ka operational marketplace customers ko active service areas mein approved professionals se milata hai.",
+  sections: [
+    {
+      title: "Repair request kaise dein?",
+      body:
+        "Sign in karein, saved property select karein, masla samjhayein aur request submit karein. Matching mein sirf safe zaroori details share hoti hain.",
+    },
+    {
+      title: "Price final kab hoti hai?",
+      body:
+        "Offer fixed, estimated ya inspection-based ho sakti hai. Paid kaam approved quotation aur approved change order ke mutabiq hota hai.",
+    },
+    {
+      title: "Masla honay par kya hoga?",
+      body:
+        "Job record completion issue, payment review, warranty claim aur evidence-based dispute support karta hai.",
+    },
+  ],
+};
+
 export function getPublicPageCopy(key: PublicPageKey, locale: AppLocale) {
   return locale === "ur" ? ur[key] : locale === "ur-Latn" ? roman[key] : en[key];
 }

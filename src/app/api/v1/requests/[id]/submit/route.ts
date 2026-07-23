@@ -28,6 +28,35 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!turnstile.success || turnstile.action !== "service_request_submit") {
     return apiError(400, "SECURITY_CHECK_FAILED", "Complete the security verification again.");
   }
+  const { data: consentTypes, error: consentTypeError } = await context.supabase
+    .from("consent_types")
+    .select("id,current_version")
+    .in("code", ["terms_of_service", "privacy_policy"]);
+  if (consentTypeError || consentTypes?.length !== 2) {
+    return apiError(
+      500,
+      "CONSENT_UNAVAILABLE",
+      "The marketplace policies could not be recorded.",
+    );
+  }
+  const { error: consentError } = await context.supabase
+    .from("user_consents")
+    .upsert(
+      consentTypes.map((consent) => ({
+        user_profile_id: context.profile.id,
+        consent_type_id: consent.id,
+        version: consent.current_version,
+        accepted: true,
+      })),
+      { onConflict: "user_profile_id,consent_type_id,version" },
+    );
+  if (consentError) {
+    return apiError(
+      500,
+      "CONSENT_SAVE_FAILED",
+      "The marketplace policies could not be recorded.",
+    );
+  }
   let key: string;
   try {
     key = parseIdempotencyKey(request);

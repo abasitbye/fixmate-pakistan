@@ -35,3 +35,66 @@ test("production security headers and PWA assets are present",async({request})=>
   expect(worker.ok()).toBeTruthy();
   expect(worker.headers()["service-worker-allowed"]).toBe("/");
 });
+
+test("Phase 2 release flags and readiness are healthy", async ({ request }) => {
+  const flagsResponse = await request.get(
+    `/api/v1/public/marketplace-flags?check=${Date.now()}`,
+  );
+  expect(flagsResponse.ok()).toBeTruthy();
+  const flags = (await flagsResponse.json()).data.flags as Record<
+    string,
+    boolean
+  >;
+  expect(Object.keys(flags)).toHaveLength(6);
+  expect(Object.values(flags).every(Boolean)).toBe(true);
+
+  const readiness = await request.get(`/api/readiness?check=${Date.now()}`);
+  expect(readiness.ok()).toBeTruthy();
+  expect((await readiness.json()).status).toBe("ready");
+});
+
+test("marketplace legal content is versioned in every locale", async ({
+  page,
+}) => {
+  for (const locale of ["en", "ur", "ur-Latn"]) {
+    await page.goto(`/${locale}/privacy`);
+    await expect(page.getByText(/2\.0/).first()).toBeVisible();
+    await page.goto(`/${locale}/terms`);
+    await expect(page.getByText(/2\.0/).first()).toBeVisible();
+  }
+  await page.goto("/ur/privacy");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+});
+
+test("critical internal and staff operations remain protected", async ({
+  request,
+}) => {
+  expect((await request.get("/api/internal/cron/marketplace")).status()).toBe(
+    401,
+  );
+  expect((await request.get("/api/v1/support/operations")).status()).toBe(403);
+  expect((await request.get("/api/v1/disputes")).status()).toBe(401);
+  expect((await request.get("/api/v1/warranties")).status()).toBe(401);
+});
+
+test("public shell is keyboard and mobile usable without console failures", async ({
+  page,
+}) => {
+  const failures: string[] = [];
+  page.on("pageerror", (error) => failures.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error") failures.push(message.text());
+  });
+
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto("/en");
+  await page.keyboard.press("Tab");
+  await expect(page.locator(".skip-link")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#main-content")).toBeVisible();
+  const overflows = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth + 1,
+  );
+  expect(overflows).toBe(false);
+  expect(failures).toEqual([]);
+});

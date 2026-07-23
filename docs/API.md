@@ -27,6 +27,9 @@ JSON routes return `{ success: true, data, error: null }` or `{ success: false, 
 - `/api/v1/public/*`: catalog, locations, verification requirements.
 - `/api/v1/admin/*`: applications, documents, users, roles, locations, categories, settings, audit.
 - `/api/v1/support/notes`: staff-only support history.
+- `/api/v1/support/operations*`: staff-only workload, alerts, risk review and scheduled-run history.
+- `/api/health` and `/api/readiness`: safe liveness and dependency/queue readiness without credential details.
+- `/api/internal/cron/marketplace`: bearer-protected scheduled lifecycle maintenance; never a public client API.
 
 Arrival codes never appear in URLs or logs. Raw codes are returned only to the owning customer immediately after generation; the database stores only a bcrypt hash. Invalid verification attempts commit their counter before a safe error response is returned.
 

@@ -52,6 +52,8 @@ const expectedTables = [
   "job_reviews", "professional_rating_aggregates", "job_warranties", "warranty_claims",
   "warranty_claim_evidence", "job_disputes", "dispute_evidence", "dispute_messages",
   "dispute_decisions", "dispute_status_history", "marketplace_account_actions",
+  "operational_alerts", "marketplace_risk_signals", "marketplace_abuse_reports",
+  "background_job_runs", "data_retention_policies",
 ];
 
 try {
@@ -74,6 +76,10 @@ try {
       (select count(*)::int from public.cities) as cities,
       (select count(*)::int from storage.buckets where id in ('profile-images','professional-documents','verification-selfies','service-request-media','job-evidence','financial-evidence','resolution-evidence')) as buckets,
       (select count(*)::int from public.system_settings where key like 'phase2.%' and value = 'false'::jsonb) as disabled_phase2_flags,
+      (select count(*)::int from public.system_settings where key in (
+        'phase2.marketplace_enabled','phase2.requests_enabled','phase2.matching_enabled',
+        'phase2.jobs_enabled','phase2.payments_enabled','phase2.resolution_enabled'
+      ) and value = 'true'::jsonb) as enabled_phase2_flags,
       (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
         'create_service_request_draft','update_service_request_draft','submit_service_request','cancel_service_request'
       )) as request_commands,
@@ -111,21 +117,26 @@ try {
         'add_resolution_evidence','update_dispute_workflow','resolve_job_dispute',
         'transition_resolved_dispute','escalate_warranty_claim'
       )) as resolution_commands,
+      (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname in (
+        'run_marketplace_maintenance','review_marketplace_risk_signal','review_operational_alert'
+      )) as operations_commands,
+      (select count(*)::int from public.data_retention_policies where is_active) as retention_policies,
       (select count(*)::int from pg_policies where schemaname = 'public') as policies
   `;
 
-  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 7 || counts.disabled_phase2_flags !== 6 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.execution_commands !== 17 || counts.payment_commands !== 17 || counts.resolution_commands !== 14 || counts.policies < 84) {
+  if (counts.roles !== 5 || counts.categories !== 6 || counts.subcategories !== 48 || counts.cities < 2 || counts.buckets !== 7 || counts.disabled_phase2_flags !== 0 || counts.enabled_phase2_flags !== 6 || counts.request_commands !== 4 || counts.matching_commands !== 5 || counts.booking_commands !== 13 || counts.execution_commands !== 17 || counts.payment_commands !== 17 || counts.resolution_commands !== 14 || counts.operations_commands !== 3 || counts.retention_policies !== 8 || counts.policies < 89) {
     throw new Error("Seed or policy verification failed.");
   }
 
   console.log(`verified tables=${tables.length} rls=${tables.length} policies=${counts.policies}`);
   console.log(`verified roles=${counts.roles} categories=${counts.categories} subcategories=${counts.subcategories} cities=${counts.cities} private_buckets=${counts.buckets}`);
-  console.log(`verified phase2_flags_disabled=${counts.disabled_phase2_flags} request_commands=${counts.request_commands}`);
+  console.log(`verified phase2_flags_enabled=${counts.enabled_phase2_flags} phase2_flags_disabled=${counts.disabled_phase2_flags} request_commands=${counts.request_commands}`);
   console.log(`verified matching_offer_commands=${counts.matching_commands}`);
   console.log(`verified booking_arrival_commands=${counts.booking_commands}`);
   console.log(`verified job_execution_commands=${counts.execution_commands}`);
   console.log(`verified payment_accounting_commands=${counts.payment_commands}`);
   console.log(`verified resolution_commands=${counts.resolution_commands}`);
+  console.log(`verified operations_commands=${counts.operations_commands} retention_policies=${counts.retention_policies}`);
 } finally {
   await sql.end({ timeout: 5 });
 }

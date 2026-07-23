@@ -37,6 +37,7 @@ export const requestUpdateSchema = requestDraftSchema.and(
 export const requestSubmitSchema = z.object({
   version: z.number().int().positive(),
   turnstileToken: z.string().min(1),
+  acceptMarketplaceTerms: z.literal(true),
 });
 
 export const requestCancelSchema = z.object({

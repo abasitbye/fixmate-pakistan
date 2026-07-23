@@ -6,7 +6,7 @@ Public routes expose localized content and safe configuration. Account routes ma
 
 Supabase Auth owns sessions. Server Components and route handlers use cookie-backed SSR clients. The service-role key exists only in server modules. Sensitive state changes use PostgreSQL security-definer functions that validate transitions and append audit records.
 
-Stable UUIDs, UTC timestamps, explicit enums, normalized service/location data, device registrations, and JSON API envelopes keep the foundation mobile-ready. Phase 2 requests, matching, offers, booking scheduling, jobs, arrival verification, consent-limited en-route location, quotations, job execution, and payments are connected through transactional commands and an outbox. Warranties and disputes continue in later checkpoints.
+Stable UUIDs, UTC timestamps, explicit enums, normalized service/location data, device registrations, and JSON API envelopes keep the foundation mobile-ready. Phase 2 requests, matching, offers, booking scheduling, jobs, arrival verification, consent-limited en-route location, quotations, job execution, payments, reviews, warranties and disputes are connected through transactional commands and an outbox.
 
 Exact service addresses remain encrypted in request snapshots and are decrypted server-side only for the selected professional after booking confirmation. Arrival codes use a cryptographically secure generator and bcrypt at rest. Optional location sharing requires explicit consent, is limited to an en-route session, stops at verified arrival or expiry, and is covered by a retention purge command.
 
@@ -21,3 +21,5 @@ Marketplace accounting uses integer minor units, effective-dated fee rules, appe
 Completed work issues a warranty only when the accepted quotation includes warranty days; coverage and exclusions are copied from those accepted terms. Claims preserve their response, revisit, evidence, resolution, and escalation history. Reviews are unique per participant/job, and only published customer reviews contribute to controlled professional aggregates.
 
 Disputes preserve party messages, private evidence, status history, decisions, and account actions. RLS filters customer-only, professional-only, and internal-staff records. Opening an eligible financial dispute moves payable value into a balanced hold journal and changes the earning to held; payout settlement has an independent database guard. Decisions release holds and create approved refunds/corrective records without rewriting completed ledger history.
+
+Daily maintenance runs through a bearer-protected Vercel Cron route and a database advisory lock. It expires time-bound records, applies minimized retention, detects retry exhaustion, raises safe operational alerts and creates explainable human-review risk signals. Safe liveness and readiness endpoints are separate; Sentry and structured logs redact sensitive fields.

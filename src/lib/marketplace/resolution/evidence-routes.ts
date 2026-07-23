@@ -5,6 +5,7 @@ import { evidenceFinalizeSchema, evidencePrepareSchema } from "./schemas";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { primaryRole } from "../payments/service";
 import { resolutionCommandError } from "./api";
+import { enforceMarketplaceRateLimit } from "../rate-limit";
 const extensions: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -38,6 +39,13 @@ export function evidenceUploadHandler(caseType: "claim" | "dispute") {
   ) {
     const a = await getResolutionContext();
     if (!a.context) return a.response;
+    const limited = await enforceMarketplaceRateLimit({
+      profileId: a.context.profile.id,
+      scope: `marketplace.${caseType}.evidence-upload`,
+      limit: 20,
+      windowSeconds: 3600,
+    });
+    if (limited) return limited;
     const id = (await params).id;
     const access = await canAccess(caseType, a.context, id);
     if (!access.data)
@@ -69,6 +77,13 @@ export function evidenceFinalizeHandler(caseType: "claim" | "dispute") {
   ) {
     const a = await getResolutionContext();
     if (!a.context) return a.response;
+    const limited = await enforceMarketplaceRateLimit({
+      profileId: a.context.profile.id,
+      scope: `marketplace.${caseType}.evidence-finalize`,
+      limit: 40,
+      windowSeconds: 3600,
+    });
+    if (limited) return limited;
     const p = evidenceFinalizeSchema.safeParse(
       await r.json().catch(() => null),
     );

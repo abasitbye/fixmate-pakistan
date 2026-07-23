@@ -10,7 +10,7 @@ The foundation includes production deployment, email OTP, Turnstile abuse protec
 
 ## Phase 2
 
-Phase 2 is being delivered through production checkpoints. It adds service requests, privacy-preserving professional matching, offers, bookings, jobs, quotations, payments, reviews, warranties, and disputes. Incomplete workflows remain disabled through database-backed feature flags.
+Phase 2 adds service requests, privacy-preserving professional matching, offers, bookings, jobs, quotations, cash/manual payments, reviews, warranties, disputes, operational monitoring, scheduled lifecycle maintenance and human-reviewed abuse controls. Online payment is exposed only when a separately verified provider is configured.
 
 ## Stack
 
@@ -38,3 +38,8 @@ Production, not localhost, is the acceptance environment.
 - [Security](docs/SECURITY.md)
 - [Operations](docs/OPERATIONS.md)
 - [Phase 2 marketplace](docs/PHASE2.md)
+- [Data model](docs/DATA_MODEL.md)
+- [State machines](docs/STATE_MACHINES.md)
+- [Permission matrix](docs/PERMISSIONS.md)
+- [Production runbooks](docs/RUNBOOKS.md)
+- [Phase 3 deferrals](docs/PHASE3.md)

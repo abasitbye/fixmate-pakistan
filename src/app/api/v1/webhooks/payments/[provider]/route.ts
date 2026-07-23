@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { apiError, apiSuccess } from "@/lib/api/response";
+import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { isMarketplaceFeatureEnabled } from "@/lib/marketplace/feature-flags";
 import { getPaymentProvider } from "@/lib/marketplace/payments/provider";
+import { captureOperationalError } from "@/lib/observability/operations";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(
@@ -16,6 +18,17 @@ export async function POST(
       "Payment webhooks are not available.",
     );
   const providerCode = (await params).provider.toLowerCase();
+  const source =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const allowed = await consumeRateLimit({
+    scope: `marketplace.webhook.${providerCode}`,
+    identifier: source,
+    limit: 500,
+    windowSeconds: 60,
+  });
+  if (!allowed) {
+    return apiError(429, "RATE_LIMITED", "Webhook request limit exceeded.");
+  }
   const adapter = getPaymentProvider(providerCode);
   if (!adapter?.supportsOnlinePayment) {
     return apiError(
@@ -56,7 +69,10 @@ export async function POST(
         "The webhook event conflicts with an existing event.",
       );
     return apiSuccess({ received: true });
-  } catch {
+  } catch (error) {
+    captureOperationalError(error, "payment_webhook_verification", {
+      provider: providerCode,
+    });
     return apiError(
       401,
       "WEBHOOK_INVALID",

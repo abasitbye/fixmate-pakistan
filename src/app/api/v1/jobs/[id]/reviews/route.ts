@@ -6,6 +6,7 @@ import {
   submitReview,
 } from "@/lib/marketplace/resolution/service";
 import { resolutionCommandError } from "@/lib/marketplace/resolution/api";
+import { enforceMarketplaceRateLimit } from "@/lib/marketplace/rate-limit";
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -23,6 +24,13 @@ export async function POST(
 ) {
   const a = await getResolutionContext();
   if (!a.context) return a.response;
+  const limited = await enforceMarketplaceRateLimit({
+    profileId: a.context.profile.id,
+    scope: "marketplace.review.submit",
+    limit: 8,
+    windowSeconds: 3600,
+  });
+  if (limited) return limited;
   const p = reviewSchema.safeParse(await r.json().catch(() => null));
   if (!p.success)
     return apiError(400, "INVALID_REVIEW", "Check the rating and comment.");

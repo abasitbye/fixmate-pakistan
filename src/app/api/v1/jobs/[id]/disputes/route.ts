@@ -4,12 +4,20 @@ import { resolutionCommandError } from "@/lib/marketplace/resolution/api";
 import { getResolutionContext } from "@/lib/marketplace/resolution/route-utils";
 import { disputeSchema } from "@/lib/marketplace/resolution/schemas";
 import { openDispute } from "@/lib/marketplace/resolution/service";
+import { enforceMarketplaceRateLimit } from "@/lib/marketplace/rate-limit";
 export async function POST(
   r: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const a = await getResolutionContext();
   if (!a.context) return a.response;
+  const limited = await enforceMarketplaceRateLimit({
+    profileId: a.context.profile.id,
+    scope: "marketplace.dispute.open",
+    limit: 5,
+    windowSeconds: 3600,
+  });
+  if (limited) return limited;
   const p = disputeSchema.safeParse(await r.json().catch(() => null));
   if (!p.success)
     return apiError(

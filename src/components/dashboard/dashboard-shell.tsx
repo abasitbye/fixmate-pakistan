@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   BadgeDollarSign,
   BriefcaseBusiness,
@@ -17,6 +18,7 @@ import {
   UsersRound,
   Wrench,
 } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/brand/brand-mark";
@@ -43,6 +45,7 @@ const professionalLinks = [
 
 const adminLinks = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/operations", label: "Operations", icon: Activity },
   { href: "/admin/professionals", label: "Professionals", icon: ClipboardCheck },
   { href: "/admin/customers", label: "Customers", icon: UsersRound },
   { href: "/admin/services", label: "Services", icon: Wrench },
@@ -54,6 +57,7 @@ const adminLinks = [
 
 const supportLinks = [
   { href: "/support", label: "Overview", icon: Headphones },
+  { href: "/support/operations", label: "Operations", icon: Activity },
   { href: "/support/users", label: "Users", icon: UsersRound },
   { href: "/support/applications", label: "Applications", icon: ClipboardCheck },
   { href: "/support/notes", label: "Support notes", icon: ScrollText },
@@ -66,7 +70,7 @@ const sectionLinks = {
   support: supportLinks,
 } as const;
 
-export function DashboardShell({
+export async function DashboardShell({
   children,
   displayName,
   roles,
@@ -79,6 +83,43 @@ export function DashboardShell({
   section?: "customer" | "professional" | "admin" | "support";
   marketplaceNavigation?: { requests: boolean; matching: boolean; jobs: boolean; payments: boolean; resolution: boolean };
 }) {
+  const t = await getTranslations("Dashboard");
+  const label = (value: string) => {
+    const keys: Record<string, string> = {
+      Overview: "overview",
+      Properties: "properties",
+      Profile: "profile",
+      Notifications: "notifications",
+      Settings: "settings",
+      Application: "application",
+      Professionals: "professionals",
+      Customers: "customers",
+      Services: "services",
+      Locations: "locations",
+      Roles: "roles",
+      "Audit log": "auditLog",
+      Users: "users",
+      Applications: "applications",
+      "Support notes": "supportNotes",
+      Requests: "requests",
+      Bookings: "bookings",
+      Jobs: "jobs",
+      Payments: "payments",
+      Receipts: "receipts",
+      Invitations: "invitations",
+      Offers: "offers",
+      Earnings: "earnings",
+      Payouts: "payouts",
+      Warranties: "warranties",
+      Disputes: "disputes",
+      Reconciliation: "reconciliation",
+      Refunds: "refunds",
+      "Fee rules": "feeRules",
+      Reviews: "reviews",
+      Operations: "operations",
+    };
+    return keys[value] ? t(keys[value]) : value;
+  };
   let navigationLinks = [...sectionLinks[section]] as Array<{ href: string; label: string; icon: typeof LayoutDashboard }>;
   if (section === "customer") {
     const marketplaceLinks = [
@@ -152,23 +193,23 @@ export function DashboardShell({
     <div className="dashboard-frame">
       <aside className="dashboard-sidebar">
         <BrandMark />
-        <nav aria-label="Dashboard navigation">
-          {navigationLinks.map(({ href, label, icon: Icon }) => <Link href={href} key={href}><Icon size={18} />{label}</Link>)}
-          {section !== "customer" ? <Link href="/customer"><House size={18} />Customer workspace</Link> : null}
-          {section !== "professional" && roles.includes("professional") ? <Link href="/professional"><BriefcaseBusiness size={18} />Professional workspace</Link> : null}
-          {section !== "admin" && roles.some((role) => ["admin", "super_admin"].includes(role)) ? <Link href="/admin"><Building2 size={18} />Administration</Link> : null}
-          {section !== "support" && roles.some((role) => ["support", "admin", "super_admin"].includes(role)) ? <Link href="/support"><Headphones size={18} />Support workspace</Link> : null}
+        <nav aria-label={t("navigationLabel")}>
+          {navigationLinks.map(({ href, label: linkLabel, icon: Icon }) => <Link href={href} key={href}><Icon size={18} />{label(linkLabel)}</Link>)}
+          {section !== "customer" ? <Link href="/customer"><House size={18} />{t("customerWorkspace")}</Link> : null}
+          {section !== "professional" && roles.includes("professional") ? <Link href="/professional"><BriefcaseBusiness size={18} />{t("professionalWorkspace")}</Link> : null}
+          {section !== "admin" && roles.some((role) => ["admin", "super_admin"].includes(role)) ? <Link href="/admin"><Building2 size={18} />{t("administration")}</Link> : null}
+          {section !== "support" && roles.some((role) => ["support", "admin", "super_admin"].includes(role)) ? <Link href="/support"><Headphones size={18} />{t("supportWorkspace")}</Link> : null}
         </nav>
         <LogoutButton />
       </aside>
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <div><span className="dashboard-mobile-brand"><House size={18} /> FixMate</span></div>
-          <div className="dashboard-user"><LanguageSwitcher /><span><small>Signed in as</small><strong>{displayName || "FixMate user"}</strong></span></div>
+          <div className="dashboard-user"><LanguageSwitcher /><span><small>{t("signedInAs")}</small><strong>{displayName || t("fixMateUser")}</strong></span></div>
         </header>
         <main id="main-content" className="dashboard-content">{children}</main>
-        <nav className="dashboard-bottom-nav" aria-label="Mobile dashboard navigation">
-          {mobileLinks.map(({ href, label, icon: Icon }) => <Link href={href} key={href}><Icon size={19} /><span>{label}</span></Link>)}
+        <nav className="dashboard-bottom-nav" aria-label={t("mobileNavigationLabel")}>
+          {mobileLinks.map(({ href, label: linkLabel, icon: Icon }) => <Link href={href} key={href}><Icon size={19} /><span>{label(linkLabel)}</span></Link>)}
         </nav>
       </div>
     </div>

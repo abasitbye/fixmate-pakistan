@@ -28,5 +28,19 @@ describe("customer request schemas", () => {
       preferredEndTime: "12:00",
     }).success).toBe(false);
     expect(requestSubmitSchema.safeParse({ version: 1, turnstileToken: "" }).success).toBe(false);
+    expect(
+      requestSubmitSchema.safeParse({
+        version: 1,
+        turnstileToken: "verified",
+        acceptMarketplaceTerms: true,
+      }).success,
+    ).toBe(true);
+    expect(
+      requestSubmitSchema.safeParse({
+        version: 1,
+        turnstileToken: "verified",
+        acceptMarketplaceTerms: false,
+      }).success,
+    ).toBe(false);
   });
 });
