@@ -68,6 +68,20 @@ try {
     throw new Error(`Schema verification failed: missing=${missing.join(",") || "none"}; without_rls=${withoutRls.join(",") || "none"}`);
   }
 
+  const [phoneConstraint] = await sql`
+    select pg_get_constraintdef(oid) as definition, convalidated as validated
+    from pg_constraint
+    where conrelid = 'public.user_profiles'::regclass
+      and conname = 'user_profiles_phone_check'
+  `;
+  if (
+    !phoneConstraint?.validated ||
+    !phoneConstraint.definition.includes(String.raw`^\+?`) ||
+    phoneConstraint.definition.includes(String.raw`^\\+?`)
+  ) {
+    throw new Error("Phone constraint verification failed.");
+  }
+
   const [counts] = await sql`
     select
       (select count(*)::int from public.roles) as roles,
@@ -129,6 +143,7 @@ try {
   }
 
   console.log(`verified tables=${tables.length} rls=${tables.length} policies=${counts.policies}`);
+  console.log("verified phone_constraint=valid");
   console.log(`verified roles=${counts.roles} categories=${counts.categories} subcategories=${counts.subcategories} cities=${counts.cities} private_buckets=${counts.buckets}`);
   console.log(`verified phase2_flags_enabled=${counts.enabled_phase2_flags} phase2_flags_disabled=${counts.disabled_phase2_flags} request_commands=${counts.request_commands}`);
   console.log(`verified matching_offer_commands=${counts.matching_commands}`);

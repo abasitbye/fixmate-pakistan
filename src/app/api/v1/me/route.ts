@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { profileSchema } from "@/lib/auth/schemas";
 import { getAuthenticatedContext } from "@/lib/auth/session";
@@ -26,7 +28,13 @@ export async function PATCH(request: Request) {
       preferred_locale: parsed.data.preferredLocale,
     })
     .eq("id", context.profile.id);
-  if (profileError) return apiError(500, "PROFILE_UPDATE_FAILED", "Your profile could not be saved.");
+  if (profileError) {
+    Sentry.captureException(profileError, {
+      tags: { operation: "onboarding_profile_update" },
+      user: { id: context.userId },
+    });
+    return apiError(500, "PROFILE_UPDATE_FAILED", "Your profile could not be saved.");
+  }
 
   const { data: consentTypes, error: consentError } = await context.supabase
     .from("consent_types")
@@ -43,9 +51,18 @@ export async function PATCH(request: Request) {
         version: consent.current_version,
         accepted: true,
       })),
-      { onConflict: "user_profile_id,consent_type_id,version" },
+      {
+        onConflict: "user_profile_id,consent_type_id,version",
+        ignoreDuplicates: true,
+      },
     );
-    if (recordError) return apiError(500, "CONSENT_SAVE_FAILED", "Required policies could not be recorded.");
+    if (recordError) {
+      Sentry.captureException(recordError, {
+        tags: { operation: "onboarding_consent_save" },
+        user: { id: context.userId },
+      });
+      return apiError(500, "CONSENT_SAVE_FAILED", "Required policies could not be recorded.");
+    }
   }
 
   return apiSuccess({ saved: true });

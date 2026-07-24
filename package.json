@@ -15,6 +15,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:integration:onboarding": "node scripts/test/onboarding-integration.mjs",
     "test:integration:phase2": "node scripts/test/phase2-request-integration.mjs",
     "test:integration:marketplace": "node scripts/test/phase2-marketplace-integration.mjs",
     "test:integration:operations": "node scripts/test/phase2-operations-integration.mjs",
