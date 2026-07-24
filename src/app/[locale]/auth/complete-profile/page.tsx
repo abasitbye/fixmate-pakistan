@@ -16,6 +16,7 @@ export default async function CompleteProfilePage({ params }: { params: Promise<
   if (!context) redirect(localizedPath(locale, "/auth/sign-in"));
   if (context.profile.account_status !== "active") redirect(localizedPath(locale, "/auth/restricted"));
   if (context.profile.onboarding_completed_at) redirect(localizedPath(locale, "/customer"));
+  if (context.profile.display_name) redirect(localizedPath(locale, "/auth/account-purpose"));
 
   return (
     <AuthShell eyebrow="Account setup" title="A useful profile, with only what we need." lead="Your details stay protected by row-level access rules and are never exposed in public professional listings.">

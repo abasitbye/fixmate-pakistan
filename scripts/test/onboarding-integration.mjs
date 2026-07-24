@@ -39,10 +39,16 @@ async function api(path, init = {}) {
 }
 
 async function createSession(email) {
-  const { data, error } = await admin.auth.admin.generateLink({
-    type: "magiclink",
-    email,
-  });
+  let data;
+  let error;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    ({ data, error } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+    }));
+    if (!error) break;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+  }
   if (error || !data?.properties?.email_otp) {
     throw error ?? new Error("Admin OTP generation failed.");
   }
@@ -68,10 +74,16 @@ async function createSession(email) {
 
 async function createTestAccount(purpose) {
   const email = `onboarding-${purpose}-${Date.now()}-${crypto.randomUUID()}@fixmate.invalid`;
-  const { data, error } = await admin.auth.admin.createUser({
-    email,
-    email_confirm: true,
-  });
+  let data;
+  let error;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    ({ data, error } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+    }));
+    if (!error) break;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+  }
   if (error || !data.user) {
     throw error ?? new Error("Onboarding test user was not created.");
   }
@@ -157,6 +169,19 @@ async function createTestAccount(purpose) {
     true,
   );
 
+  const completedProfileStep = await fetch(
+    `${appUrl}/en/auth/complete-profile`,
+    {
+      redirect: "follow",
+      headers: { cookie: session.cookie },
+    },
+  );
+  assert.equal(completedProfileStep.status, 200);
+  assert.match(
+    new URL(completedProfileStep.url).pathname,
+    /\/auth\/account-purpose\/?$/,
+  );
+
   const selected = await api("/api/v1/me/purpose", {
     method: "POST",
     headers: { "content-type": "application/json", cookie: session.cookie },
@@ -170,10 +195,17 @@ async function createTestAccount(purpose) {
 
   const expectedPage =
     purpose === "customer" ? "/en/customer" : "/en/professional/application";
-  const page = await api(expectedPage, {
+  const pageResponse = await fetch(`${appUrl}${expectedPage}`, {
+    redirect: "follow",
     headers: { cookie: session.cookie },
   });
-  assert.equal(page.response.status, 200);
+  assert.equal(pageResponse.status, 200);
+  assert.match(
+    new URL(pageResponse.url).pathname,
+    purpose === "customer"
+      ? /\/customer\/?$/
+      : /\/professional\/application\/?$/,
+  );
 
   const { data: completed, error: completedError } = await admin
     .from("user_profiles")
@@ -220,7 +252,13 @@ try {
     await admin.from("audit_logs").delete().eq("actor_user_profile_id", profileId);
   }
   for (const userId of createdUsers) {
-    await admin.auth.admin.deleteUser(userId);
+    let deletion;
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      deletion = await admin.auth.admin.deleteUser(userId);
+      if (!deletion.error) break;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+    }
+    if (deletion?.error) throw deletion.error;
   }
   console.log("onboarding-integration-cleanup=verified");
 }

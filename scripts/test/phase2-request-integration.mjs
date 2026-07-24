@@ -37,15 +37,30 @@ async function cleanup() {
     await admin.from("notifications").delete().eq("user_profile_id", profileId);
   }
   if (propertyId) await admin.from("properties").delete().eq("id", propertyId);
-  if (authUserId) await admin.auth.admin.deleteUser(authUserId);
+  if (authUserId) {
+    let deletion;
+    for (let attempt = 1; attempt <= 5; attempt += 1) {
+      deletion = await admin.auth.admin.deleteUser(authUserId);
+      if (!deletion.error) break;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 300));
+    }
+    if (deletion?.error) throw deletion.error;
+  }
 }
 
 try {
-  const { data: created, error: createUserError } = await admin.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { display_name: "Phase 2 Integration Check" },
-  });
+  let created;
+  let createUserError;
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    ({ data: created, error: createUserError } =
+      await admin.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        user_metadata: { display_name: "Phase 2 Integration Check" },
+      }));
+    if (!createUserError) break;
+    await new Promise((resolve) => setTimeout(resolve, attempt * 400));
+  }
   if (createUserError || !created.user) throw createUserError ?? new Error("Test user was not created.");
   authUserId = created.user.id;
 
